@@ -10,12 +10,7 @@
     <main class="app-shell">
       <header class="topbar">
         <div class="title-block">
-          <p class="eyebrow">Jump King Inspired Prototype</p>
-          <h1>Climb the bell tower</h1>
-          <p class="description">
-            The route is tuned to be climbable now: shorter stone ledges, lower low-jumps,
-            and cleaner upward progression.
-          </p>
+          <h1>A Warriors climb</h1>
         </div>
         <div class="status-tools">
           <div class="stats">
@@ -30,22 +25,14 @@
       </header>
 
       <section class="stage-frame">
-        <canvas id="game" width="960" height="540" aria-label="Jump King prototype canvas"></canvas>
+        <canvas id="game" width="960" height="540" tabindex="0" aria-label="Jump King prototype canvas"></canvas>
         <div class="control-bar">
-          <span>Hold Space to charge</span>
-          <span>A/D or arrows to aim</span>
-          <span>Release to jump</span>
+          <span>Hold Space to charge jump</span>
+          <span>A/D or arrows to move</span>
+          <span>Left click attack</span>
+          <span>Right click block</span>
           <span>R to restart</span>
         </div>
-      </section>
-
-      <section class="asset-panel">
-        <p>
-          Custom art folders are ready: <code>assets/textures</code>,
-          <code>assets/characters</code>, and <code>assets/models</code>.
-          Runtime sprites are now organized per character, and the original imported pack is
-          archived under <code>assets/source-packs/craftpix-shinobi-pack</code>.
-        </p>
       </section>
     </main>
     <script type="module" src="src/game.js"></script>

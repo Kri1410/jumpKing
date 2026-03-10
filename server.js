@@ -25,7 +25,8 @@ const contentTypes = {
 
 function resolveFile(urlPath) {
   const requested = urlPath === "/" ? "/index.html" : urlPath;
-  const safePath = path.normalize(requested).replace(/^(\.\.[/\\])+/, "");
+  const decodedPath = decodeURIComponent(requested);
+  const safePath = path.normalize(decodedPath).replace(/^(\.\.[/\\])+/, "");
   return path.join(root, safePath);
 }
 
