@@ -34,14 +34,30 @@ const BOSS_APPROACH_TRIGGER_Y = 1540;
 const BOSS_TELEPORTER_PLATFORM_Y = 1320;
 const TOWER_RETURN_PLATFORM_Y = 1120;
 const TOWER_ENTRY_TELEPORTER_X = 480;
+const TOWER_BASE_TELEPORTER_X = 250;
 const TOWER_RETURN_X = 654;
 const ARENA_LEFT = 72;
 const ARENA_RIGHT = 888;
 const ARENA_FLOOR_Y = 468;
 const ARENA_PLAYER_SPAWN_X = 152;
 const ARENA_EXIT_TELEPORTER_X = 792;
-const BOSS_MIN_X = 356;
-const BOSS_MAX_X = 780;
+const FOREST_LEFT = 48;
+const FOREST_RIGHT = 912;
+const FOREST_FLOOR_Y = 472;
+const FOREST_ENTRY_X = 132;
+const FOREST_BONFIRE_X = 246;
+const FOREST_BONFIRE_DRAW_WIDTH = 92;
+const FOREST_BONFIRE_DRAW_HEIGHT = 92;
+const FOREST_BONFIRE_HITBOX_WIDTH = 42;
+const FOREST_BONFIRE_HITBOX_HEIGHT = 58;
+const TOWER_FOREST_EXIT_ZONE = {
+  x: TOWER_RIGHT - 40,
+  y: 480,
+  width: 36,
+  height: 120
+};
+const BOSS_MIN_X = ARENA_LEFT + 48;
+const BOSS_MAX_X = ARENA_RIGHT - 48;
 const BOSS_SPAWN_X = 710;
 const TELEPORTER_FRAME_WIDTH = 512;
 const TELEPORTER_FRAME_HEIGHT = 512;
@@ -60,6 +76,10 @@ const PLAYER_ATTACK_RANGE = 108;
 const BOSS_ATTACK_RANGE = 112;
 const PLAYER_ATTACK_DURATION = 0.32;
 const PLAYER_ATTACK_COOLDOWN = 0.4;
+const PLAYER_DASH_SPEED = 410;
+const PLAYER_DASH_DURATION = 0.2;
+const PLAYER_DASH_COOLDOWN = 0.55;
+const PLAYER_DASH_DAMAGE = 12;
 const BOSS_ATTACK_DURATION = 0.72;
 const BOSS_ATTACK_COOLDOWN = 1.2;
 const HURT_DURATION = 0.28;
@@ -93,14 +113,35 @@ const platforms = [
   { x: 330, y: 1040, width: 150, height: 24 },
   { x: 170, y: 880, width: 200, height: 24 },
   { x: 450, y: 720, width: 180, height: 24 },
-  { x: 292, y: 560, width: 160, height: 24, type: "goal-rest" }
+  { x: 292, y: 560, width: 160, height: 24, type: "goal-rest" },
+  { x: 452, y: 548, width: 352, height: 18, type: "forest-path" }
 ];
 
 const arenaPlatforms = [
   { x: ARENA_LEFT - 24, y: ARENA_FLOOR_Y, width: ARENA_RIGHT - ARENA_LEFT + 48, height: 96, type: "arena-floor" }
 ];
 
+const forestPlatforms = [
+  { x: FOREST_LEFT - 32, y: FOREST_FLOOR_Y, width: FOREST_RIGHT - FOREST_LEFT + 64, height: 110, type: "forest-floor" },
+  { x: 166, y: FOREST_FLOOR_Y - 86, width: 136, height: 18, type: "forest-step" },
+  { x: 372, y: FOREST_FLOOR_Y - 138, width: 146, height: 18, type: "forest-step" },
+  { x: 610, y: FOREST_FLOOR_Y - 92, width: 124, height: 18, type: "forest-step" }
+];
+
 const goal = { x: 336, y: 446, width: 76, height: 92 };
+const forestBonfire = {
+  x: FOREST_BONFIRE_X,
+  floorY: FOREST_FLOOR_Y,
+  active: false,
+  playerNearby: false,
+  healFlashTime: 0
+};
+const checkpoint = {
+  active: false,
+  scene: "tower",
+  x: 180,
+  y: FLOOR_Y - PLAYER_HEIGHT
+};
 const boss = {
   x: BOSS_SPAWN_X,
   minX: BOSS_MIN_X,
@@ -150,6 +191,9 @@ const player = {
   attackHitDone: false,
   attackCycleIndex: 0,
   currentAttackIndex: 0,
+  dashTime: 0,
+  dashCooldown: 0,
+  dashHitDone: false,
   blocking: false,
   hurtTime: 0,
   invulnerableTime: 0,
@@ -179,6 +223,7 @@ const characters = {
       run: customCharacterAsset,
       jump: customCharacterAsset,
       attack: [customCharacterAsset],
+      dash: customCharacterAsset,
       block: customCharacterAsset,
       hurt: customCharacterAsset,
       dead: customCharacterAsset
@@ -194,12 +239,13 @@ const assets = {
   ledge: createOptionalAsset("assets/textures/ledge", true),
   goal: createOptionalAsset("assets/textures/goal", false),
   arenaBackground: createExactAsset("assets/textures/backgrounds-pixel-art/m8/2.png"),
-  teleporter: {
-    idle: createExactAsset("assets/textures/TP/idle.png"),
-    activating: createExactAsset("assets/textures/TP/activating.png"),
-    active: createExactAsset("assets/textures/TP/active.png"),
-    using: createExactAsset("assets/textures/TP/using.png")
-  },
+  bonfire: [
+    createExactAsset("assets/textures/Bonfire/Bonfire_1.png"),
+    createExactAsset("assets/textures/Bonfire/Bonfire_2.png"),
+    createExactAsset("assets/textures/Bonfire/Bonfire_3.png"),
+    createExactAsset("assets/textures/Bonfire/Bonfire_4.png")
+  ],
+  teleporterDoor: createOptionalAssetPaths(["assets/textures/TP/door"], false),
   boss: {
     idle: createExactAsset("assets/characters/Enemis/enemy sprites/Gotoku/Idle.png"),
     run: createExactAsset("assets/characters/Enemis/enemy sprites/Gotoku/Run.png"),
@@ -227,6 +273,8 @@ const GAME_CONTROL_KEYS = new Set([
   "KeyA",
   "KeyD",
   "Space",
+  "ShiftLeft",
+  "ShiftRight",
   "KeyR"
 ]);
 const PAGE_NAV_KEYS = new Set(["ArrowUp", "ArrowDown"]);
@@ -238,7 +286,8 @@ const TELEPORTER_ANIMATIONS = {
 };
 const encounter = {
   bossStarted: false,
-  bossDefeated: false
+  bossDefeated: false,
+  forestUnlocked: false
 };
 const teleportTransition = {
   active: false,
@@ -246,6 +295,7 @@ const teleportTransition = {
 };
 const teleporters = {
   entry: createTeleporter("entry", "tower", TOWER_ENTRY_TELEPORTER_X, BOSS_TELEPORTER_PLATFORM_Y),
+  base: createTeleporter("base", "tower", TOWER_BASE_TELEPORTER_X, FLOOR_Y),
   exit: createTeleporter("exit", "arena", ARENA_EXIT_TELEPORTER_X, ARENA_FLOOR_Y, true)
 };
 
@@ -329,6 +379,7 @@ function createCharacterSet(id, label, basePath) {
         createExactAsset(`${basePath}/Attack_2.png`),
         createExactAsset(`${basePath}/Attack_3.png`)
       ],
+      dash: createOptionalAssetPaths([`${basePath}/dash`, `${basePath}/Dash`, `${basePath}/Run`], false),
       block: createExactAsset(`${basePath}/Shield.png`),
       hurt: createExactAsset(`${basePath}/Hurt.png`),
       dead: createExactAsset(`${basePath}/Dead.png`)
@@ -384,6 +435,8 @@ function setupCharacterSelect() {
     }
 
     activeCharacterId = characterSelect.value;
+    player.dashTime = 0;
+    player.dashCooldown = 0;
     persistCharacterId(activeCharacterId);
   });
 }
@@ -423,6 +476,10 @@ function getPlayerSpriteState() {
 
   if (isPlayerBlocking()) {
     return "block";
+  }
+
+  if (isPlayerDashing()) {
+    return "dash";
   }
 
   if (!player.grounded) {
@@ -473,6 +530,14 @@ function isPlayerBlocking() {
   return player.blocking && !player.dead && player.hurtTime <= 0;
 }
 
+function canUseDash() {
+  return getActiveCharacter().id === "samurai";
+}
+
+function isPlayerDashing() {
+  return canUseDash() && player.dashTime > 0 && !player.dead && player.hurtTime <= 0;
+}
+
 function isPlayerAttacking() {
   return player.attackTime > 0 && !player.dead;
 }
@@ -505,6 +570,10 @@ function isArenaScene() {
   return currentScene === "arena";
 }
 
+function isForestScene() {
+  return currentScene === "forest";
+}
+
 function isBossApproachVisible() {
   return (
     isTowerScene() &&
@@ -522,8 +591,24 @@ function isTeleporting() {
   return teleportTransition.active;
 }
 
+function isPlatformActive(platform) {
+  if (platform.type === "forest-path") {
+    return encounter.forestUnlocked;
+  }
+
+  return true;
+}
+
 function getScenePlatforms() {
-  return isArenaScene() ? arenaPlatforms : platforms;
+  if (isArenaScene()) {
+    return arenaPlatforms;
+  }
+
+  if (isForestScene()) {
+    return forestPlatforms;
+  }
+
+  return platforms.filter((platform) => isPlatformActive(platform));
 }
 
 function getTowerHeightReferenceY() {
@@ -551,10 +636,6 @@ function getTeleporterAnimation(state) {
   return TELEPORTER_ANIMATIONS[state] || TELEPORTER_ANIMATIONS.idle;
 }
 
-function getTeleporterStateAsset(state) {
-  return assets.teleporter[state] || assets.teleporter.idle;
-}
-
 function setTeleporterState(teleporter, state) {
   teleporter.state = state;
   teleporter.stateTime = 0;
@@ -562,6 +643,7 @@ function setTeleporterState(teleporter, state) {
 
 function resetTeleporters() {
   setTeleporterState(teleporters.entry, "idle");
+  setTeleporterState(teleporters.base, "active");
   setTeleporterState(teleporters.exit, "hidden");
 }
 
@@ -587,6 +669,95 @@ function playerTouchesTeleporter(teleporter) {
     player.y + player.height > hitbox.y &&
     player.y < hitbox.y + hitbox.height
   );
+}
+
+function getForestBonfireHitbox() {
+  return {
+    x: forestBonfire.x - FOREST_BONFIRE_HITBOX_WIDTH / 2,
+    y: forestBonfire.floorY - FOREST_BONFIRE_HITBOX_HEIGHT,
+    width: FOREST_BONFIRE_HITBOX_WIDTH,
+    height: FOREST_BONFIRE_HITBOX_HEIGHT
+  };
+}
+
+function playerTouchesForestBonfire() {
+  const hitbox = getForestBonfireHitbox();
+  return (
+    player.x + player.width > hitbox.x &&
+    player.x < hitbox.x + hitbox.width &&
+    player.y + player.height > hitbox.y &&
+    player.y < hitbox.y + hitbox.height
+  );
+}
+
+function activateForestCheckpointAndHeal() {
+  if (!forestBonfire.active) {
+    forestBonfire.active = true;
+    checkpoint.active = true;
+    checkpoint.scene = "forest";
+    checkpoint.x = clamp(forestBonfire.x + 42 - player.width / 2, FOREST_LEFT + 8, FOREST_RIGHT - player.width - 8);
+    checkpoint.y = FOREST_FLOOR_Y - player.height;
+  }
+
+  if (player.health < player.maxHealth) {
+    player.health = player.maxHealth;
+  }
+
+  player.hurtTime = 0;
+  player.invulnerableTime = 0;
+  forestBonfire.healFlashTime = 0.45;
+}
+
+function updateForestBonfire(deltaTime) {
+  forestBonfire.playerNearby = false;
+  forestBonfire.healFlashTime = Math.max(0, forestBonfire.healFlashTime - deltaTime);
+
+  if (!isForestScene() || player.dead) {
+    return;
+  }
+
+  if (playerTouchesForestBonfire()) {
+    forestBonfire.playerNearby = true;
+    activateForestCheckpointAndHeal();
+  }
+}
+
+function respawnPlayerAfterDeath() {
+  if (!checkpoint.active) {
+    resetPlayer();
+    return;
+  }
+
+  teleportTransition.active = false;
+  teleportTransition.teleporterId = null;
+  movePlayerToScene(checkpoint.scene, checkpoint.x, checkpoint.y);
+  player.facing = 1;
+  player.won = false;
+  player.health = player.maxHealth;
+  player.attackTime = 0;
+  player.attackCooldown = 0;
+  player.attackHitDone = false;
+  player.attackCycleIndex = 0;
+  player.currentAttackIndex = 0;
+  player.dashTime = 0;
+  player.dashCooldown = 0;
+  player.dashHitDone = false;
+  player.blocking = false;
+  player.hurtTime = 0;
+  player.invulnerableTime = 0;
+  player.dead = false;
+  player.deathTimer = 0;
+  clearInputState();
+
+  if (checkpoint.scene === "forest") {
+    encounter.bossStarted = true;
+    encounter.bossDefeated = true;
+    encounter.forestUnlocked = true;
+    forestBonfire.active = true;
+    setTeleporterState(teleporters.entry, "hidden");
+    setTeleporterState(teleporters.base, "active");
+    setTeleporterState(teleporters.exit, "hidden");
+  }
 }
 
 function movePlayerToScene(scene, x, y) {
@@ -630,9 +801,11 @@ function completeTeleport(teleporter) {
   teleportTransition.active = false;
   teleportTransition.teleporterId = null;
 
-  if (teleporter.id === "entry") {
+  if (teleporter.id === "entry" || teleporter.id === "base") {
     encounter.bossStarted = true;
+    encounter.forestUnlocked = false;
     setTeleporterState(teleporters.entry, "hidden");
+    setTeleporterState(teleporters.base, "active");
     setTeleporterState(teleporters.exit, "hidden");
     towerProgressY = Math.min(towerProgressY, BOSS_TELEPORTER_PLATFORM_Y - player.height);
     resetBoss();
@@ -642,6 +815,8 @@ function completeTeleport(teleporter) {
   }
 
   encounter.bossDefeated = true;
+  encounter.forestUnlocked = false;
+  setTeleporterState(teleporters.base, "active");
   setTeleporterState(teleporters.exit, "hidden");
   movePlayerToScene("tower", TOWER_RETURN_X, TOWER_RETURN_PLATFORM_Y - player.height);
 }
@@ -682,6 +857,16 @@ function updateTeleporters(deltaTime) {
     }
   }
 
+  if (isTowerScene()) {
+    if (teleporters.base.state === "idle") {
+      setTeleporterState(teleporters.base, "active");
+    }
+
+    if (teleporters.base.state === "active" && !teleportTransition.active && playerTouchesTeleporter(teleporters.base)) {
+      beginTeleport(teleporters.base);
+    }
+  }
+
   if (isArenaScene()) {
     if (boss.dead && teleporters.exit.state === "hidden") {
       setTeleporterState(teleporters.exit, "activating");
@@ -693,6 +878,7 @@ function updateTeleporters(deltaTime) {
   }
 
   updateSingleTeleporter(teleporters.entry, deltaTime);
+  updateSingleTeleporter(teleporters.base, deltaTime);
   updateSingleTeleporter(teleporters.exit, deltaTime);
 }
 
@@ -709,6 +895,14 @@ function resetPlayer() {
   towerProgressY = player.spawnY;
   encounter.bossStarted = false;
   encounter.bossDefeated = false;
+  encounter.forestUnlocked = false;
+  checkpoint.active = false;
+  checkpoint.scene = "tower";
+  checkpoint.x = player.spawnX;
+  checkpoint.y = player.spawnY;
+  forestBonfire.active = false;
+  forestBonfire.playerNearby = false;
+  forestBonfire.healFlashTime = 0;
   teleportTransition.active = false;
   teleportTransition.teleporterId = null;
   player.x = player.spawnX;
@@ -726,6 +920,9 @@ function resetPlayer() {
   player.attackHitDone = false;
   player.attackCycleIndex = 0;
   player.currentAttackIndex = 0;
+  player.dashTime = 0;
+  player.dashCooldown = 0;
+  player.dashHitDone = false;
   player.blocking = false;
   player.hurtTime = 0;
   player.invulnerableTime = 0;
@@ -756,6 +953,7 @@ function beginCharge() {
     isTeleporting() ||
     isPlayerAttacking() ||
     isPlayerBlocking() ||
+    isPlayerDashing() ||
     player.hurtTime > 0
   ) {
     return;
@@ -797,6 +995,7 @@ function clearInputState() {
   input.chargeHeld = false;
   player.charging = false;
   player.charge = 0;
+  player.dashTime = 0;
   player.blocking = false;
 }
 
@@ -806,7 +1005,7 @@ function setPlayerBlocking(active) {
     return;
   }
 
-  if (active && (isPlayerAttacking() || player.charging || player.hurtTime > 0 || !player.grounded)) {
+  if (active && (isPlayerAttacking() || player.charging || isPlayerDashing() || player.hurtTime > 0 || !player.grounded)) {
     return;
   }
 
@@ -814,7 +1013,7 @@ function setPlayerBlocking(active) {
 }
 
 function triggerPlayerAttack() {
-  if (!canPlayerFight() || player.charging || isPlayerBlocking() || player.hurtTime > 0 || !player.grounded) {
+  if (!canPlayerFight() || player.charging || isPlayerBlocking() || isPlayerDashing() || player.hurtTime > 0 || !player.grounded) {
     return;
   }
 
@@ -830,6 +1029,37 @@ function triggerPlayerAttack() {
     (player.attackCycleIndex + 1) % getVariantCount(getActiveCharacter().states.attack);
   player.blocking = false;
   player.vx = 0;
+}
+
+function triggerPlayerDash() {
+  if (
+    !canUseDash() ||
+    !canPlayerFight() ||
+    player.charging ||
+    isPlayerAttacking() ||
+    isPlayerBlocking() ||
+    player.hurtTime > 0 ||
+    !player.grounded
+  ) {
+    return;
+  }
+
+  if (player.dashCooldown > 0 || isPlayerDashing()) {
+    return;
+  }
+
+  const aim = currentAim();
+  if (aim !== 0) {
+    player.facing = aim;
+  }
+
+  player.charging = false;
+  player.charge = 0;
+  player.blocking = false;
+  player.dashTime = PLAYER_DASH_DURATION;
+  player.dashCooldown = PLAYER_DASH_COOLDOWN;
+  player.dashHitDone = false;
+  player.vx = player.facing * PLAYER_DASH_SPEED;
 }
 
 function damageBoss(amount) {
@@ -870,6 +1100,7 @@ function damagePlayer(amount) {
   player.hurtTime = HURT_DURATION;
   player.invulnerableTime = PLAYER_IFRAME_DURATION;
   player.blocking = false;
+  player.dashTime = 0;
   player.attackTime = 0;
   player.attackHitDone = true;
   player.vx = bossIsOnRight ? -130 : 130;
@@ -930,6 +1161,10 @@ function handleKeyChange(event, pressed) {
     } else {
       releaseCharge();
     }
+  }
+
+  if (pressed && (event.code === "ShiftLeft" || event.code === "ShiftRight")) {
+    triggerPlayerDash();
   }
 
   if (pressed && event.code === "KeyR") {
@@ -1007,6 +1242,13 @@ function resolvePlatforms(previousBottom) {
     player.vy = 0;
     player.grounded = true;
     return arenaPlatforms[0];
+  }
+
+  if (isForestScene() && player.y + player.height >= VIEW_HEIGHT + 120) {
+    player.y = FOREST_FLOOR_Y - player.height;
+    player.vy = 0;
+    player.grounded = true;
+    return forestPlatforms[0];
   }
 
   if (isTowerScene() && player.y + player.height >= WORLD_HEIGHT) {
@@ -1103,6 +1345,14 @@ function update(deltaTime) {
     player.attackTime = Math.max(0, player.attackTime - deltaTime);
   }
 
+  if (player.dashTime > 0) {
+    player.dashTime = Math.max(0, player.dashTime - deltaTime);
+  }
+
+  if (player.dashCooldown > 0) {
+    player.dashCooldown = Math.max(0, player.dashCooldown - deltaTime);
+  }
+
   if (player.hurtTime > 0) {
     player.hurtTime = Math.max(0, player.hurtTime - deltaTime);
   }
@@ -1114,7 +1364,7 @@ function update(deltaTime) {
   if (player.dead) {
     player.deathTimer = Math.max(0, player.deathTimer - deltaTime);
     if (player.deathTimer <= 0) {
-      resetPlayer();
+      respawnPlayerAfterDeath();
     }
     return;
   }
@@ -1129,6 +1379,20 @@ function update(deltaTime) {
 
   if (!player.won) {
     const previousBottom = player.y + player.height;
+
+    if (
+      isPlayerDashing() &&
+      !player.dashHitDone &&
+      isBossEncounterActive() &&
+      !boss.dead &&
+      Math.abs(getBossCenterX() - getPlayerCenterX()) <= PLAYER_ATTACK_RANGE * 0.82 &&
+      ((player.facing === 1 && getBossCenterX() >= getPlayerCenterX()) ||
+        (player.facing === -1 && getBossCenterX() <= getPlayerCenterX())) &&
+      Math.abs(player.y - (ARENA_FLOOR_Y - player.height)) < 90
+    ) {
+      damageBoss(PLAYER_DASH_DAMAGE);
+      player.dashHitDone = true;
+    }
 
     if (isPlayerAttacking()) {
       if (
@@ -1159,6 +1423,8 @@ function update(deltaTime) {
     if (player.grounded) {
       if (player.charging || isPlayerAttacking() || isPlayerBlocking() || player.hurtTime > 0) {
         player.vx = 0;
+      } else if (isPlayerDashing()) {
+        player.vx = player.facing * PLAYER_DASH_SPEED;
       } else {
         const aim = currentAim();
         player.vx = aim * MOVE_SPEED;
@@ -1176,11 +1442,13 @@ function update(deltaTime) {
       player.vx *= Math.pow(AIR_DRAG, deltaTime * 60);
     }
 
-    player.x = clamp(
-      player.x,
-      isArenaScene() ? ARENA_LEFT + 8 : TOWER_LEFT + 8,
-      isArenaScene() ? ARENA_RIGHT - player.width - 8 : TOWER_RIGHT - player.width - 8
-    );
+    const minX = isArenaScene() ? ARENA_LEFT + 8 : isForestScene() ? FOREST_LEFT + 8 : TOWER_LEFT + 8;
+    const maxX = isArenaScene()
+      ? ARENA_RIGHT - player.width - 8
+      : isForestScene()
+        ? FOREST_RIGHT - player.width - 8
+        : TOWER_RIGHT - player.width - 8;
+    player.x = clamp(player.x, minX, maxX);
 
     resolvePlatforms(previousBottom);
 
@@ -1196,13 +1464,33 @@ function update(deltaTime) {
       player.y < goal.y + goal.height;
 
     if (goalOverlap) {
-      player.won = true;
-      player.grounded = true;
-      player.vx = 0;
-      player.vy = 0;
-      player.charging = false;
-      player.charge = 0;
+      if (encounter.bossDefeated) {
+        encounter.forestUnlocked = true;
+      } else {
+        player.won = true;
+        player.grounded = true;
+        player.vx = 0;
+        player.vy = 0;
+        player.charging = false;
+        player.charge = 0;
+        player.dashTime = 0;
+      }
     }
+
+    const forestExitOverlap =
+      isTowerScene() &&
+      encounter.forestUnlocked &&
+      player.x + player.width > TOWER_FOREST_EXIT_ZONE.x &&
+      player.x < TOWER_FOREST_EXIT_ZONE.x + TOWER_FOREST_EXIT_ZONE.width &&
+      player.y + player.height > TOWER_FOREST_EXIT_ZONE.y &&
+      player.y < TOWER_FOREST_EXIT_ZONE.y + TOWER_FOREST_EXIT_ZONE.height;
+
+    if (forestExitOverlap) {
+      movePlayerToScene("forest", FOREST_ENTRY_X, FOREST_FLOOR_Y - player.height);
+      player.facing = 1;
+    }
+
+    updateForestBonfire(deltaTime);
   }
 
   const targetCamera = isTowerScene() ? clamp(player.y - VIEW_HEIGHT * 0.56, 0, WORLD_HEIGHT - VIEW_HEIGHT) : 0;
@@ -1224,6 +1512,22 @@ function fillPattern(asset, x, y, width, height, fallback, alpha = 1) {
 }
 
 function drawSky() {
+  if (isForestScene()) {
+    const forestSky = context.createLinearGradient(0, 0, 0, VIEW_HEIGHT);
+    forestSky.addColorStop(0, "#1b2b1e");
+    forestSky.addColorStop(0.5, "#2b4b31");
+    forestSky.addColorStop(1, "#1a2a1d");
+    context.fillStyle = forestSky;
+    context.fillRect(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
+
+    context.fillStyle = "rgba(175, 224, 154, 0.1)";
+    context.fillRect(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
+
+    drawRidge(VIEW_HEIGHT - 144, "#24382b", [0, 42, 120, 20, 260, 58, 430, 24, 620, 62, 760, 30, VIEW_WIDTH, 44]);
+    drawRidge(VIEW_HEIGHT - 98, "#1d2f24", [0, 62, 140, 34, 280, 68, 460, 40, 680, 78, VIEW_WIDTH, 54]);
+    return;
+  }
+
   if (isArenaScene()) {
     const arenaSky = context.createLinearGradient(0, 0, 0, VIEW_HEIGHT);
     arenaSky.addColorStop(0, "#071017");
@@ -1297,7 +1601,7 @@ function drawRidge(baseY, color, points) {
 }
 
 function drawTower() {
-  if (isArenaScene()) {
+  if (isArenaScene() || isForestScene()) {
     return;
   }
 
@@ -1345,6 +1649,20 @@ function drawTower() {
   drawBanner(TOWER_LEFT + 24, 1260, "#7f2320");
   drawBanner(TOWER_RIGHT - 60, 2220, "#77531c");
   drawBanner(TOWER_LEFT + 28, 3180, "#5c1f48");
+
+  if (encounter.forestUnlocked) {
+    const openingY = TOWER_FOREST_EXIT_ZONE.y - 12;
+    const openingHeight = TOWER_FOREST_EXIT_ZONE.height + 26;
+
+    context.fillStyle = "#0f1a14";
+    context.fillRect(TOWER_RIGHT - 14, openingY, 24, openingHeight);
+    context.fillStyle = "#386243";
+    context.fillRect(TOWER_RIGHT - 10, openingY + 10, 16, openingHeight - 20);
+
+    context.fillStyle = "#6d523b";
+    context.fillRect(TOWER_RIGHT - 52, TOWER_FOREST_EXIT_ZONE.y + 98, 48, 8);
+    context.fillRect(TOWER_RIGHT - 40, TOWER_FOREST_EXIT_ZONE.y + 86, 36, 6);
+  }
 
   context.restore();
 }
@@ -1408,6 +1726,44 @@ function drawPlatforms() {
       continue;
     }
 
+    if (platform.type === "forest-floor") {
+      context.fillStyle = "#2a3c2c";
+      context.fillRect(platform.x, platform.y, platform.width, platform.height);
+      context.fillStyle = "#4f7a4e";
+      context.fillRect(platform.x, platform.y, platform.width, 10);
+      context.fillStyle = "rgba(19, 31, 18, 0.35)";
+      context.fillRect(platform.x, platform.y + platform.height - 10, platform.width, 10);
+
+      for (let tuftX = platform.x + 8; tuftX < platform.x + platform.width - 12; tuftX += 28) {
+        context.fillStyle = "rgba(128, 190, 118, 0.35)";
+        context.fillRect(tuftX, platform.y - 4, 8, 4);
+      }
+      continue;
+    }
+
+    if (platform.type === "forest-step") {
+      context.fillStyle = "#40583f";
+      context.fillRect(platform.x, platform.y, platform.width, platform.height);
+      context.fillStyle = "#74a36d";
+      context.fillRect(platform.x, platform.y, platform.width, 5);
+      context.fillStyle = "rgba(18, 28, 16, 0.3)";
+      context.fillRect(platform.x, platform.y + platform.height - 4, platform.width, 4);
+      continue;
+    }
+
+    if (platform.type === "forest-path") {
+      context.fillStyle = "#4b3a2a";
+      context.fillRect(platform.x, platform.y, platform.width, platform.height);
+      context.fillStyle = "#8f7554";
+      context.fillRect(platform.x, platform.y, platform.width, 4);
+
+      for (let plankX = platform.x + 12; plankX < platform.x + platform.width - 10; plankX += 36) {
+        context.fillStyle = "rgba(34, 22, 15, 0.35)";
+        context.fillRect(plankX, platform.y + 5, 2, platform.height - 7);
+      }
+      continue;
+    }
+
     if (platform.type === "floor") {
       context.fillStyle = "#3a281e";
       context.fillRect(platform.x, platform.y, platform.width, platform.height);
@@ -1451,31 +1807,109 @@ function drawPlatforms() {
   context.restore();
 }
 
-function getTeleporterFrameIndex(teleporter) {
+function getTeleporterTransitionProgress(teleporter) {
   const animation = getTeleporterAnimation(teleporter.state);
-  const rawFrame = Math.floor(teleporter.stateTime * animation.fps);
   if (animation.loop) {
-    return rawFrame % TELEPORTER_FRAME_COUNT;
+    return 1;
   }
 
-  return Math.min(TELEPORTER_FRAME_COUNT - 1, rawFrame);
+  const duration = getTeleporterStateDuration(teleporter.state);
+  if (duration <= 0) {
+    return 1;
+  }
+
+  return clamp(teleporter.stateTime / duration, 0, 1);
 }
 
-function drawGridSprite(asset, frameIndex, frameWidth, frameHeight, drawX, drawY, drawWidth, drawHeight) {
-  const column = frameIndex % TELEPORTER_FRAME_COLUMNS;
-  const row = Math.floor(frameIndex / TELEPORTER_FRAME_COLUMNS);
+function getTeleporterDoorOpenAmount(teleporter) {
+  if (teleporter.state === "active" || teleporter.state === "using") {
+    return 1;
+  }
 
-  context.drawImage(
-    asset.image,
-    column * frameWidth,
-    row * frameHeight,
-    frameWidth,
-    frameHeight,
-    drawX,
-    drawY,
-    drawWidth,
-    drawHeight
+  if (teleporter.state === "activating") {
+    return getTeleporterTransitionProgress(teleporter);
+  }
+
+  return 0;
+}
+
+function drawTeleporterDoor(teleporter) {
+  const centerX = Math.round(teleporter.x);
+  const floorY = Math.round(teleporter.floorY - cameraY);
+  const doorSprite = assets.teleporterDoor;
+
+  if (doorSprite && doorSprite.loaded) {
+    const spriteWidth = doorSprite.image.naturalWidth;
+    const spriteHeight = doorSprite.image.naturalHeight;
+    const targetWidth = Math.round(teleporter.drawWidth * 0.95);
+    const targetHeight = Math.round(targetWidth * (spriteHeight / spriteWidth));
+    const drawX = Math.round(centerX - targetWidth / 2);
+    const drawY = Math.round(floorY - targetHeight + 8);
+
+    context.drawImage(doorSprite.image, 0, 0, spriteWidth, spriteHeight, drawX, drawY, targetWidth, targetHeight);
+
+    if (teleporter.state === "active" || teleporter.state === "using") {
+      context.fillStyle = "rgba(133, 198, 255, 0.26)";
+      context.fillRect(centerX - 30, floorY - 8, 60, 8);
+    }
+
+    return;
+  }
+
+  const doorWidth = Math.round(teleporter.drawWidth * 0.58);
+  const doorHeight = Math.round(teleporter.drawHeight * 0.9);
+  const frameThickness = 8;
+  const doorTop = floorY - doorHeight;
+  const doorLeft = centerX - Math.round(doorWidth / 2);
+  const panelMaxWidth = Math.floor(doorWidth / 2);
+  const openAmount = getTeleporterDoorOpenAmount(teleporter);
+  const pulse = 0.72 + Math.sin(animationClock * 8) * 0.28;
+  const usingBoost = teleporter.state === "using" ? 0.25 : 0;
+  const lightAlpha = clamp(openAmount * (0.55 + pulse * 0.25 + usingBoost), 0, 0.95);
+  const panelWidth = Math.max(2, Math.round(panelMaxWidth * (1 - openAmount)));
+  const innerTop = doorTop + 8;
+  const innerHeight = doorHeight - 10;
+  const innerRight = doorLeft + doorWidth;
+  const leftPanelX = doorLeft;
+  const rightPanelX = innerRight - panelWidth;
+
+  context.fillStyle = "#2d1e18";
+  context.fillRect(
+    doorLeft - frameThickness,
+    doorTop - frameThickness,
+    doorWidth + frameThickness * 2,
+    doorHeight + frameThickness + 6
   );
+
+  context.fillStyle = "#8d6c45";
+  context.fillRect(doorLeft - frameThickness, doorTop - frameThickness, doorWidth + frameThickness * 2, 6);
+  context.fillRect(doorLeft - frameThickness, doorTop, 6, doorHeight + 6);
+  context.fillRect(doorLeft + doorWidth + frameThickness - 6, doorTop, 6, doorHeight + 6);
+
+  if (openAmount > 0.02) {
+    const blueGlow = context.createLinearGradient(doorLeft, innerTop, doorLeft, innerTop + innerHeight);
+    blueGlow.addColorStop(0, `rgba(178, 229, 255, ${lightAlpha})`);
+    blueGlow.addColorStop(0.55, `rgba(88, 178, 255, ${lightAlpha * 0.85})`);
+    blueGlow.addColorStop(1, `rgba(23, 96, 198, ${lightAlpha * 0.75})`);
+    context.fillStyle = blueGlow;
+    context.fillRect(doorLeft + 1, innerTop, doorWidth - 2, innerHeight);
+
+    context.fillStyle = `rgba(184, 234, 255, ${lightAlpha * 0.38})`;
+    context.fillRect(centerX - 6, innerTop + 8, 12, innerHeight - 16);
+  }
+
+  context.fillStyle = "#4c372b";
+  context.fillRect(leftPanelX, innerTop, panelWidth, innerHeight);
+  context.fillRect(rightPanelX, innerTop, panelWidth, innerHeight);
+
+  context.fillStyle = "#2a1f1a";
+  context.fillRect(leftPanelX + panelWidth - 2, innerTop, 2, innerHeight);
+  context.fillRect(rightPanelX, innerTop, 2, innerHeight);
+
+  if (teleporter.state === "active" || teleporter.state === "using") {
+    context.fillStyle = `rgba(133, 198, 255, ${0.18 + pulse * 0.1})`;
+    context.fillRect(centerX - 34, floorY - 8, 68, 8);
+  }
 }
 
 function drawTeleporters() {
@@ -1484,30 +1918,7 @@ function drawTeleporters() {
       continue;
     }
 
-    const asset = getTeleporterStateAsset(teleporter.state);
-    const drawX = Math.round(teleporter.x - teleporter.drawWidth / 2);
-    const drawY = Math.round(teleporter.floorY - teleporter.drawHeight + 12 - cameraY);
-
-    if (asset && asset.loaded) {
-      drawGridSprite(
-        asset,
-        getTeleporterFrameIndex(teleporter),
-        TELEPORTER_FRAME_WIDTH,
-        TELEPORTER_FRAME_HEIGHT,
-        drawX,
-        drawY,
-        teleporter.drawWidth,
-        teleporter.drawHeight
-      );
-    } else {
-      context.fillStyle = "rgba(119, 190, 255, 0.38)";
-      context.fillRect(drawX + 42, drawY + 28, teleporter.drawWidth - 84, teleporter.drawHeight - 36);
-    }
-
-    if (teleporter.state === "active") {
-      context.fillStyle = "rgba(172, 219, 255, 0.18)";
-      context.fillRect(teleporter.x - 26, teleporter.floorY - 8 - cameraY, 52, 8);
-    }
+    drawTeleporterDoor(teleporter);
   }
 }
 
@@ -1599,6 +2010,43 @@ function drawGoal() {
   context.restore();
 }
 
+function drawForestBonfire() {
+  if (!isForestScene()) {
+    return;
+  }
+
+  const centerX = Math.round(forestBonfire.x);
+  const floorY = Math.round(forestBonfire.floorY - cameraY);
+  const drawX = Math.round(centerX - FOREST_BONFIRE_DRAW_WIDTH / 2);
+  const drawY = Math.round(floorY - FOREST_BONFIRE_DRAW_HEIGHT + 10);
+  const loadedFrames = assets.bonfire.filter((frame) => frame.loaded);
+  const pulse = 0.74 + Math.sin(animationClock * 8) * 0.26;
+  const checkpointBoost = forestBonfire.active ? 0.2 : 0;
+  const healBoost = forestBonfire.healFlashTime > 0 ? 0.26 : 0;
+  const glowAlpha = clamp(0.18 + checkpointBoost + healBoost + pulse * 0.06, 0.2, 0.82);
+
+  context.fillStyle = `rgba(252, 176, 88, ${glowAlpha})`;
+  context.beginPath();
+  context.ellipse(centerX, floorY - 2, 34, 10, 0, 0, Math.PI * 2);
+  context.fill();
+
+  if (loadedFrames.length > 0) {
+    const frameIndex = Math.floor(animationClock * 10) % loadedFrames.length;
+    const frame = loadedFrames[frameIndex];
+    context.drawImage(frame.image, 0, 0, frame.image.naturalWidth, frame.image.naturalHeight, drawX, drawY, FOREST_BONFIRE_DRAW_WIDTH, FOREST_BONFIRE_DRAW_HEIGHT);
+  } else {
+    context.fillStyle = "#4a2d1e";
+    context.fillRect(centerX - 15, floorY - 18, 30, 18);
+    context.fillStyle = "#e28935";
+    context.beginPath();
+    context.moveTo(centerX, floorY - 52);
+    context.lineTo(centerX - 10, floorY - 22);
+    context.lineTo(centerX + 10, floorY - 22);
+    context.closePath();
+    context.fill();
+  }
+}
+
 function drawPlayer() {
   const drawX = Math.round(player.x);
   const drawY = Math.round(player.y - cameraY);
@@ -1667,6 +2115,8 @@ function drawPlayerSprite(asset, spriteState) {
   } else if (spriteState === "jump" && frameCount > 1) {
     const fallRatio = clamp((player.vy + 320) / 1100, 0, 1);
     frameIndex = Math.round(fallRatio * (frameCount - 1));
+  } else if (spriteState === "dash" && frameCount > 1) {
+    frameIndex = Math.floor(animationClock * 18) % frameCount;
   } else if (spriteState === "run" && frameCount > 1) {
     frameIndex = Math.floor(animationClock * 12) % frameCount;
   } else if (spriteState === "idle" && frameCount > 1) {
@@ -1744,7 +2194,18 @@ function drawVignette() {
 }
 
 function drawOverlayText() {
-  if (isArenaScene()) {
+  if (isForestScene()) {
+    context.fillStyle = "rgba(233, 248, 217, 0.94)";
+    context.font = "22px Georgia";
+    context.fillText("Forest Edge", 24, 34);
+    context.fillStyle = "rgba(170, 222, 160, 0.9)";
+    context.font = "14px Georgia";
+    if (forestBonfire.active) {
+      context.fillText("Bonfire bound: checkpoint active and healing", 24, 56);
+    } else {
+      context.fillText("Touch the bonfire to bind checkpoint and heal", 24, 56);
+    }
+  } else if (isArenaScene()) {
     context.fillStyle = "rgba(243, 231, 207, 0.94)";
     context.font = "22px Georgia";
     context.fillText("Boss Arena", 24, 34);
@@ -1761,7 +2222,7 @@ function drawOverlayText() {
     context.fillText("Ancient Gate", 24, 34);
     context.fillStyle = "rgba(170, 204, 255, 0.84)";
     context.font = "14px Georgia";
-    context.fillText("Step into the teleporter to challenge Gotoku", 24, 56);
+    context.fillText("Step into the blue door to challenge Gotoku", 24, 56);
   } else {
     context.fillStyle = "rgba(243, 231, 207, 0.92)";
     context.font = "20px Georgia";
@@ -1769,7 +2230,13 @@ function drawOverlayText() {
 
     context.fillStyle = "rgba(211, 192, 158, 0.84)";
     context.font = "14px Georgia";
-    context.fillText("Reach the chamber at the top", 24, 56);
+    if (encounter.forestUnlocked) {
+      context.fillText("Path unlocked: move right to exit into the forest", 24, 56);
+    } else if (encounter.bossDefeated) {
+      context.fillText("Touch the bell, then head right for the outside path", 24, 56);
+    } else {
+      context.fillText("Reach the chamber at the top", 24, 56);
+    }
   }
 
   if (!player.won) {
@@ -1797,6 +2264,7 @@ function render() {
   drawTeleporters();
   drawBoss();
   drawGoal();
+  drawForestBonfire();
   drawPlayer();
   drawChargeBar();
   drawOverlayText();
@@ -1835,6 +2303,30 @@ function updateHud() {
   if (isArenaScene()) {
     statusLabel.textContent = "Boss fight";
     statusLabel.style.color = "#e0ab4f";
+    return;
+  }
+
+  if (isForestScene()) {
+    if (forestBonfire.playerNearby) {
+      statusLabel.textContent = "Resting";
+      statusLabel.style.color = "#f0c777";
+      return;
+    }
+
+    if (forestBonfire.active) {
+      statusLabel.textContent = "Checkpoint active";
+      statusLabel.style.color = "#9fd18d";
+      return;
+    }
+
+    statusLabel.textContent = "Forest";
+    statusLabel.style.color = "#9fd18d";
+    return;
+  }
+
+  if (isTowerScene() && encounter.forestUnlocked) {
+    statusLabel.textContent = "Forest path open";
+    statusLabel.style.color = "#9fd18d";
     return;
   }
 
