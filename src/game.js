@@ -4,6 +4,10 @@ const statusLabel = document.getElementById("status-label");
 const heightLabel = document.getElementById("height-label");
 const characterSelect = document.getElementById("character-select");
 const stageFrame = document.querySelector(".stage-frame");
+const pauseMenu = document.getElementById("pause-menu");
+const resumeButton = document.getElementById("resume-button");
+const restartButton = document.getElementById("restart-button");
+const fullscreenButton = document.getElementById("fullscreen-button");
 
 context.imageSmoothingEnabled = false;
 
@@ -116,6 +120,7 @@ const BOSS_IFRAME_DURATION = 0.3;
 const CAMERA_LOOKAHEAD_UP = -84;
 const CAMERA_LOOKAHEAD_DOWN = 66;
 const CAMERA_LOOKAHEAD_LERP = 420;
+const DEV_SPAWN_AT_BONFIRE = true;
 
 const platforms = [
   { x: TOWER_LEFT - 18, y: FLOOR_Y, width: TOWER_WIDTH + 36, height: 160, type: "floor" },
@@ -171,14 +176,9 @@ const forestRouteZones = [
   {
     id: "forest-edge",
     title: "Forest Edge",
-    subtitle: "Bonfire clearing and first route split",
+    subtitle: "Bonfire clearing",
     theme: "art-forest",
     decorations: [
-      { asset: "oak-sign", x: 148, yOffset: 0, scale: 3.2, alpha: 0.95 },
-      { asset: "oak-grass-1", x: 222, yOffset: 0, scale: 2.9, alpha: 0.86 },
-      { asset: "oak-lamp", x: 318, yOffset: 0, scale: 2.8, alpha: 0.88 },
-      { asset: "oak-rock-1", x: 540, yOffset: 0, scale: 3.8, alpha: 0.74 },
-      { asset: "oak-grass-2", x: 666, yOffset: 0, scale: 2.8, alpha: 0.82 }
     ],
     palette: {
       sky: ["#1b2b1e", "#2b4b31", "#1a2a1d"],
@@ -196,690 +196,164 @@ const forestRouteZones = [
     },
     floorY: FOREST_FLOOR_Y,
     platforms: [
-      { x: FOREST_LEFT - 32, y: FOREST_FLOOR_Y, width: FOREST_RIGHT - FOREST_LEFT + 64, height: 110, type: "forest-floor" },
-      { x: 166, y: FOREST_FLOOR_Y - 86, width: 136, height: 18, type: "forest-step" },
-      { x: 372, y: FOREST_FLOOR_Y - 138, width: 146, height: 18, type: "forest-step" },
-      { x: 610, y: FOREST_FLOOR_Y - 92, width: 124, height: 18, type: "forest-step" }
+      { x: FOREST_LEFT - 32, y: FOREST_FLOOR_Y,       width: FOREST_RIGHT - FOREST_LEFT + 64, height: 110, type: "forest-floor" }, // ZONE0 floor    (canvas y=472, x=16–928)
+      { x: 166,              y: FOREST_FLOOR_Y - 86,  width: 136, height: 18, type: "forest-step" },  // ZONE0 left-step   (canvas y=386, x=166–302)
+      { x: 372,              y: FOREST_FLOOR_Y - 138, width: 146, height: 18, type: "forest-step" },  // ZONE0 center-step (canvas y=334, x=372–518)
+      { x: 610,              y: FOREST_FLOOR_Y - 92,  width: 124, height: 18, type: "forest-step" }   // ZONE0 right-step  (canvas y=380, x=610–734)
     ],
     walls: [],
     transitions: [
+      // right edge → zone 1, spawn at top of cave arch opening (player drops in from above)
       {
-        x: FOREST_RIGHT - 20,
-        y: FOREST_FLOOR_Y - 126,
-        width: 20,
-        height: 128,
+        x: FOREST_RIGHT - 24,
+        y: FOREST_FLOOR_Y - 132,
+        width: 24,
+        height: 132,
         targetZone: 1,
-        spawnX: FOREST_LEFT + 20,
-        spawnY: FOREST_FLOOR_Y - PLAYER_HEIGHT
+        spawnX: FOREST_LEFT + 30,
+        spawnY: FOREST_FLOOR_Y - 247
       }
     ]
   },
   {
-    id: "moss-climb",
-    title: "Moss Climb",
-    subtitle: "Wall-jump up the shaft to move on",
-    theme: "mossy",
-    decorations: [
-      { asset: "moss-vines", x: 170, yOffset: 252, scale: 0.25, alpha: 0.72 },
-      { asset: "moss-vines", x: 420, yOffset: 308, scale: 0.28, alpha: 0.78 },
-      { asset: "moss-vines", x: 602, yOffset: 334, scale: 0.31, alpha: 0.7 },
-      { asset: "oak-rock-2", x: 286, yOffset: 0, scale: 3.3, alpha: 0.7 },
-      { asset: "oak-grass-3", x: 736, yOffset: 0, scale: 2.8, alpha: 0.82 }
-    ],
+    id: "crimson-cavern",
+    title: "Crimson Cavern",
+    subtitle: "Glowing depths",
+    theme: "crimson-cavern",
+    decorations: [],
     palette: {
-      sky: ["#13271f", "#1e3a30", "#101f19"],
-      haze: "rgba(120, 189, 146, 0.1)",
-      ridgeFar: "#1f3328",
-      ridgeNear: "#17281f",
-      floorBase: "#26382a",
-      floorTop: "#4d744b",
-      stepBase: "#3a5240",
-      stepTop: "#79a06f",
-      pathBase: "#3f3527",
-      pathTop: "#7c684d",
-      wallBase: "#2d3f32",
-      wallEdge: "#8ec081"
+      sky: ["#080507", "#100b0e", "#080507"],
+      haze: "rgba(40, 80, 40, 0.08)",
+      ridgeFar: "#0e0a0a",
+      ridgeNear: "#0a0808",
+      floorBase: "#141a14",
+      floorTop: "#2a402a",
+      stepBase: "#1a221a",
+      stepTop: "#3a5a3a",
+      pathBase: "#141a14",
+      pathTop: "#2a402a",
+      wallBase: "#141a14",
+      wallEdge: "#3a5a3a"
     },
     floorY: FOREST_FLOOR_Y,
     platforms: [
-      { x: FOREST_LEFT - 32, y: FOREST_FLOOR_Y, width: FOREST_RIGHT - FOREST_LEFT + 64, height: 110, type: "forest-floor" },
-      { x: 114, y: FOREST_FLOOR_Y - 82, width: 154, height: 18, type: "forest-step" },
-      { x: 258, y: FOREST_FLOOR_Y - 136, width: 118, height: 16, type: "forest-step" },
-      { x: 512, y: FOREST_FLOOR_Y - 282, width: 232, height: 16, type: "forest-step" }
+      { x: FOREST_LEFT - 32, y: FOREST_FLOOR_Y, width: FOREST_RIGHT - FOREST_LEFT + 64, height: 110, type: "forest-floor", invisible: true },
+      // upper cave interior ledge — top shelf inside the rocky arch
+      { x: FOREST_LEFT, y: FOREST_FLOOR_Y - 200, width: 220, height: 20, type: "forest-step", invisible: true },
+      // pillar from bottom of upper ledge down to ground (canvas x=48–68, y=292→472)
+      { x: FOREST_LEFT, y: FOREST_FLOOR_Y - 180, width: 220, height: 180, type: "forest-step", invisible: true },
+      // cave floor shelf — bottom of the cave arch, player lands here after dropping in
+      { x: FOREST_LEFT, y: FOREST_FLOOR_Y - 15, width: 500, height: 30, type: "forest-step", invisible: true },
+      // staircase ramp — floor up to stone structure (canvas x=520→656, y=472→316)
+      { x: 520, y: FOREST_FLOOR_Y, degrees: 28, width: 180, type: "forest-ramp", invisible: true },
+      // left stone structure top (wide, 2 blue torches)
+      { x: 688, y: FOREST_FLOOR_Y - 88, width: 300, height: 20, type: "forest-step", invisible: true },
+
     ],
     walls: [
-      { x: 376, y: FOREST_FLOOR_Y - 258, width: 26, height: 258, type: "forest-wall" },
-      { x: 560, y: FOREST_FLOOR_Y - 338, width: 26, height: 338, type: "forest-wall" }
+      // pillar wall — blocks horizontal movement through the pillar
+      { x: FOREST_LEFT, y: FOREST_FLOOR_Y - 180, width: 220, height: 180, invisible: true }
     ],
     transitions: [
+      // left edge → back to zone 0 (bonfire), full height trigger
       {
         x: FOREST_LEFT,
-        y: FOREST_FLOOR_Y - 126,
-        width: 20,
-        height: 128,
+        y: 0,
+        width: 24,
+        height: FOREST_FLOOR_Y,
         targetZone: 0,
-        spawnX: FOREST_RIGHT - 90,
+        spawnX: FOREST_RIGHT - 120,
         spawnY: FOREST_FLOOR_Y - PLAYER_HEIGHT
       },
+      // right edge → forward to zone 2 (dark temple)
       {
-        x: FOREST_RIGHT - 42,
-        y: FOREST_FLOOR_Y - 294,
-        width: 38,
-        height: 118,
+        x: FOREST_RIGHT - 24,
+        y: FOREST_FLOOR_Y - 400,
+        width: 24,
+        height: 400,
         targetZone: 2,
-        spawnX: FOREST_LEFT + 56,
+        spawnX: FOREST_LEFT + 52,
         spawnY: FOREST_FLOOR_Y - PLAYER_HEIGHT
       }
     ]
   },
   {
-    id: "ashen-hollow",
-    title: "Ashen Hollow",
-    subtitle: "Darker fantasy route prototype",
-    theme: "stringstar",
-    decorations: [
-      { asset: "oak-fence-1", x: 172, yOffset: 0, scale: 2.8, alpha: 0.78 },
-      { asset: "oak-rock-3", x: 304, yOffset: 0, scale: 3.6, alpha: 0.76 },
-      { asset: "oak-sign", x: 558, yOffset: 0, scale: 3, alpha: 0.86 },
-      { asset: "oak-grass-2", x: 690, yOffset: 0, scale: 2.6, alpha: 0.76 }
-    ],
+    id: "dark-temple",
+    title: "Dark Temple",
+    subtitle: "Ancient gateway",
+    theme: "dark-temple",
+    decorations: [],
     palette: {
-      sky: ["#161018", "#2a1f2d", "#160d13"],
-      haze: "rgba(178, 126, 162, 0.08)",
-      ridgeFar: "#2d2031",
-      ridgeNear: "#1f1524",
-      floorBase: "#3a2f35",
-      floorTop: "#7c5d6d",
-      stepBase: "#55434c",
-      stepTop: "#9b7a89",
-      pathBase: "#3d312c",
-      pathTop: "#7c6258",
-      wallBase: "#47383f",
-      wallEdge: "#b78fa4"
+      sky: ["#0d0507", "#150a0c", "#0d0507"],
+      haze: "rgba(80, 20, 20, 0.12)",
+      ridgeFar: "#1a0a0c",
+      ridgeNear: "#130709",
+      floorBase: "#1a1010",
+      floorTop: "#3d2828",
+      stepBase: "#241414",
+      stepTop: "#5a3030",
+      pathBase: "#1a1010",
+      pathTop: "#3d2828",
+      wallBase: "#1a1010",
+      wallEdge: "#5a3030"
     },
     floorY: FOREST_FLOOR_Y,
     platforms: [
       { x: FOREST_LEFT - 32, y: FOREST_FLOOR_Y, width: FOREST_RIGHT - FOREST_LEFT + 64, height: 110, type: "forest-floor" },
-      { x: 206, y: FOREST_FLOOR_Y - 96, width: 136, height: 18, type: "forest-step" },
-      { x: 430, y: FOREST_FLOOR_Y - 152, width: 166, height: 18, type: "forest-step" },
-      { x: 664, y: FOREST_FLOOR_Y - 94, width: 124, height: 18, type: "forest-step" }
+      // left column platform
+      { x: 78, y: FOREST_FLOOR_Y - 155, width: 162, height: 20, type: "forest-step" },
+      // left upper (above columns)
+      { x: 120, y: FOREST_FLOOR_Y - 265, width: 130, height: 20, type: "forest-step" },
+      // center arch top
+      { x: 372, y: FOREST_FLOOR_Y - 300, width: 216, height: 20, type: "forest-step" },
+      // right raised platform (stone wall)
+      { x: 648, y: FOREST_FLOOR_Y - 185, width: 182, height: 20, type: "forest-step" },
+      // far right high platform (obelisk base)
+      { x: 780, y: FOREST_FLOOR_Y - 290, width: 100, height: 20, type: "forest-step" }
     ],
     walls: [],
-    transitions: [
-      {
-        x: FOREST_LEFT,
-        y: FOREST_FLOOR_Y - 126,
-        width: 20,
-        height: 128,
-        targetZone: 1,
-        spawnX: FOREST_RIGHT - 106,
-        spawnY: FOREST_FLOOR_Y - 210
-      },
-      {
-        x: FOREST_RIGHT - 20,
-        y: FOREST_FLOOR_Y - 126,
-        width: 20,
-        height: 128,
-        targetZone: 3,
-        spawnX: FOREST_LEFT + 24,
-        spawnY: FOREST_FLOOR_Y - PLAYER_HEIGHT
-      }
-    ]
+    transitions: []
   },
   {
-    id: "verdant-bridge",
-    title: "Verdant Bridge",
-    subtitle: "Route endpoint for now",
-    theme: "oak-woods",
-    decorations: [
-      { asset: "oak-fence-2", x: 188, yOffset: 0, scale: 2.8, alpha: 0.86 },
-      { asset: "oak-lamp", x: 426, yOffset: 0, scale: 3, alpha: 0.96 },
-      { asset: "oak-grass-1", x: 506, yOffset: 0, scale: 2.8, alpha: 0.84 },
-      { asset: "oak-rock-1", x: 760, yOffset: 0, scale: 3.6, alpha: 0.72 }
-    ],
+    id: "ruined-citadel",
+    title: "Ruined Citadel",
+    subtitle: "Crumbling heights",
+    theme: "ruined-citadel",
+    decorations: [],
     palette: {
-      sky: ["#122019", "#1f3329", "#101813"],
-      haze: "rgba(122, 197, 153, 0.08)",
-      ridgeFar: "#1e3127",
-      ridgeNear: "#15261e",
-      floorBase: "#2b3b33",
-      floorTop: "#5e8c76",
-      stepBase: "#3d554a",
-      stepTop: "#88b99d",
-      pathBase: "#334036",
-      pathTop: "#6f8f7d",
-      wallBase: "#32483c",
-      wallEdge: "#8bc7a7"
+      sky: ["#0a0608", "#140c10", "#0a0608"],
+      haze: "rgba(60, 20, 40, 0.1)",
+      ridgeFar: "#160d10",
+      ridgeNear: "#0e080b",
+      floorBase: "#18130e",
+      floorTop: "#3a2a1a",
+      stepBase: "#1e1810",
+      stepTop: "#4a3820",
+      pathBase: "#18130e",
+      pathTop: "#3a2a1a",
+      wallBase: "#18130e",
+      wallEdge: "#4a3820"
     },
     floorY: FOREST_FLOOR_Y,
     platforms: [
       { x: FOREST_LEFT - 32, y: FOREST_FLOOR_Y, width: FOREST_RIGHT - FOREST_LEFT + 64, height: 110, type: "forest-floor" },
-      { x: 176, y: FOREST_FLOOR_Y - 72, width: 150, height: 18, type: "forest-step" },
-      { x: 404, y: FOREST_FLOOR_Y - 126, width: 154, height: 18, type: "forest-step" },
-      { x: 652, y: FOREST_FLOOR_Y - 84, width: 144, height: 18, type: "forest-step" }
+      // far-left low terrace
+      { x: 56, y: FOREST_FLOOR_Y - 88, width: 128, height: 20, type: "forest-step" },
+      // left mid terrace
+      { x: 82, y: FOREST_FLOOR_Y - 190, width: 168, height: 20, type: "forest-step" },
+      // center lower path
+      { x: 320, y: FOREST_FLOOR_Y - 160, width: 210, height: 20, type: "forest-step" },
+      // center upper (obelisk plaza)
+      { x: 356, y: FOREST_FLOOR_Y - 280, width: 190, height: 20, type: "forest-step" },
+      // right low terrace
+      { x: 660, y: FOREST_FLOOR_Y - 110, width: 172, height: 20, type: "forest-step" },
+      // right mid terrace
+      { x: 694, y: FOREST_FLOOR_Y - 230, width: 138, height: 20, type: "forest-step" },
+      // top tier (summit)
+      { x: 210, y: FOREST_FLOOR_Y - 350, width: 170, height: 20, type: "forest-step" }
     ],
     walls: [],
-    transitions: [
-      {
-        x: FOREST_LEFT,
-        y: FOREST_FLOOR_Y - 126,
-        width: 20,
-        height: 128,
-        targetZone: 2,
-        spawnX: FOREST_RIGHT - 88,
-        spawnY: FOREST_FLOOR_Y - PLAYER_HEIGHT
-      },
-      {
-        x: FOREST_RIGHT - 20,
-        y: FOREST_FLOOR_Y - 132,
-        width: 20,
-        height: 132,
-        targetZone: 4,
-        spawnX: FOREST_LEFT + 34,
-        spawnY: FOREST_FLOOR_Y - PLAYER_HEIGHT
-      }
-    ]
-  },
-  {
-    id: "art-canopy-gauntlet",
-    title: "Canopy Gauntlet",
-    subtitle: "Dual combat lanes with overhead flank route",
-    theme: "art-forest",
-    decorations: [
-      { asset: "oak-lamp", x: 126, yOffset: 4, scale: 2.9, alpha: 0.86 },
-      { asset: "oak-sign", x: 298, yOffset: 4, scale: 2.9, alpha: 0.9 },
-      { asset: "oak-rock-2", x: 472, yOffset: 3, scale: 3.4, alpha: 0.74 },
-      { asset: "oak-grass-2", x: 642, yOffset: 2, scale: 2.8, alpha: 0.82 },
-      { asset: "oak-fence-1", x: 812, yOffset: 4, scale: 2.8, alpha: 0.8 }
-    ],
-    palette: {
-      sky: ["#163020", "#2a4f36", "#16291f"],
-      haze: "rgba(154, 221, 173, 0.12)",
-      ridgeFar: "#223a2c",
-      ridgeNear: "#1a3024",
-      floorBase: "#2c4131",
-      floorTop: "#5f9165",
-      stepBase: "#3f5c48",
-      stepTop: "#86be84",
-      pathBase: "#504130",
-      pathTop: "#977f5d",
-      wallBase: "#314738",
-      wallEdge: "#81ba8c"
-    },
-    floorY: FOREST_FLOOR_Y,
-    platforms: [
-      { x: FOREST_LEFT - 32, y: FOREST_FLOOR_Y, width: FOREST_RIGHT - FOREST_LEFT + 64, height: 110, type: "forest-floor" },
-      { x: 96, y: FOREST_FLOOR_Y - 60, width: 126, height: 18, type: "forest-step" },
-      { x: 262, y: FOREST_FLOOR_Y - 114, width: 118, height: 18, type: "forest-step" },
-      { x: 414, y: FOREST_FLOOR_Y - 80, width: 128, height: 18, type: "forest-step" },
-      { x: 578, y: FOREST_FLOOR_Y - 142, width: 132, height: 18, type: "forest-step" },
-      { x: 742, y: FOREST_FLOOR_Y - 94, width: 124, height: 18, type: "forest-step" },
-      { x: 188, y: FOREST_FLOOR_Y - 208, width: 150, height: 16, type: "forest-step" },
-      { x: 386, y: FOREST_FLOOR_Y - 246, width: 162, height: 16, type: "forest-step" },
-      { x: 624, y: FOREST_FLOOR_Y - 216, width: 156, height: 16, type: "forest-step" }
-    ],
-    walls: [
-      { x: 236, y: FOREST_FLOOR_Y - 176, width: 24, height: 176, type: "forest-wall" },
-      { x: 552, y: FOREST_FLOOR_Y - 226, width: 24, height: 226, type: "forest-wall" },
-      { x: 706, y: FOREST_FLOOR_Y - 184, width: 22, height: 184, type: "forest-wall" }
-    ],
-    transitions: [
-      {
-        x: FOREST_LEFT,
-        y: FOREST_FLOOR_Y - 132,
-        width: 20,
-        height: 132,
-        targetZone: 3,
-        spawnX: FOREST_RIGHT - 96,
-        spawnY: FOREST_FLOOR_Y - PLAYER_HEIGHT
-      },
-      {
-        x: FOREST_RIGHT - 20,
-        y: FOREST_FLOOR_Y - 132,
-        width: 20,
-        height: 132,
-        targetZone: 5,
-        spawnX: FOREST_LEFT + 34,
-        spawnY: FOREST_FLOOR_Y - PLAYER_HEIGHT
-      }
-    ]
-  },
-  {
-    id: "art-roots-bastion",
-    title: "Roots Bastion",
-    subtitle: "Stacked hold points for controlled skirmishes",
-    theme: "art-forest",
-    decorations: [
-      { asset: "oak-fence-2", x: 140, yOffset: 4, scale: 2.8, alpha: 0.86 },
-      { asset: "oak-rock-3", x: 318, yOffset: 3, scale: 3.2, alpha: 0.74 },
-      { asset: "oak-lamp", x: 488, yOffset: 4, scale: 2.9, alpha: 0.88 },
-      { asset: "oak-sign", x: 656, yOffset: 4, scale: 2.8, alpha: 0.84 },
-      { asset: "oak-grass-1", x: 814, yOffset: 2, scale: 2.7, alpha: 0.8 }
-    ],
-    palette: {
-      sky: ["#163224", "#2c533c", "#162a21"],
-      haze: "rgba(162, 226, 186, 0.11)",
-      ridgeFar: "#243d2f",
-      ridgeNear: "#1b3226",
-      floorBase: "#2d4434",
-      floorTop: "#669a70",
-      stepBase: "#40604d",
-      stepTop: "#8cc48f",
-      pathBase: "#524332",
-      pathTop: "#9a8260",
-      wallBase: "#334b3d",
-      wallEdge: "#88c194"
-    },
-    floorY: FOREST_FLOOR_Y,
-    platforms: [
-      { x: FOREST_LEFT - 32, y: FOREST_FLOOR_Y, width: FOREST_RIGHT - FOREST_LEFT + 64, height: 110, type: "forest-floor" },
-      { x: 86, y: FOREST_FLOOR_Y - 68, width: 154, height: 18, type: "forest-step" },
-      { x: 278, y: FOREST_FLOOR_Y - 122, width: 122, height: 18, type: "forest-step" },
-      { x: 430, y: FOREST_FLOOR_Y - 86, width: 130, height: 18, type: "forest-step" },
-      { x: 592, y: FOREST_FLOOR_Y - 144, width: 136, height: 18, type: "forest-step" },
-      { x: 756, y: FOREST_FLOOR_Y - 96, width: 108, height: 18, type: "forest-step" },
-      { x: 176, y: FOREST_FLOOR_Y - 206, width: 160, height: 16, type: "forest-step" },
-      { x: 394, y: FOREST_FLOOR_Y - 246, width: 172, height: 16, type: "forest-step" },
-      { x: 634, y: FOREST_FLOOR_Y - 224, width: 150, height: 16, type: "forest-step" },
-      { x: 332, y: FOREST_FLOOR_Y - 292, width: 186, height: 16, type: "forest-step" }
-    ],
-    walls: [
-      { x: 250, y: FOREST_FLOOR_Y - 182, width: 22, height: 182, type: "forest-wall" },
-      { x: 570, y: FOREST_FLOOR_Y - 230, width: 24, height: 230, type: "forest-wall" },
-      { x: 732, y: FOREST_FLOOR_Y - 188, width: 22, height: 188, type: "forest-wall" }
-    ],
-    transitions: [
-      {
-        x: FOREST_LEFT,
-        y: FOREST_FLOOR_Y - 132,
-        width: 20,
-        height: 132,
-        targetZone: 4,
-        spawnX: FOREST_RIGHT - 96,
-        spawnY: FOREST_FLOOR_Y - PLAYER_HEIGHT
-      },
-      {
-        x: FOREST_RIGHT - 20,
-        y: FOREST_FLOOR_Y - 132,
-        width: 20,
-        height: 132,
-        targetZone: 6,
-        spawnX: FOREST_LEFT + 34,
-        spawnY: FOREST_FLOOR_Y - PLAYER_HEIGHT
-      }
-    ]
-  },
-  {
-    id: "moss-catacomb-entry",
-    title: "Moss Catacombs",
-    subtitle: "Cavern lanes with staggered retreat ledges",
-    theme: "mossy",
-    decorations: [
-      { asset: "moss-vines", x: 78, yOffset: 242, scale: 0.2, alpha: 0.66 },
-      { asset: "moss-vines", x: 444, yOffset: 256, scale: 0.24, alpha: 0.7 },
-      { asset: "moss-vines", x: 856, yOffset: 238, scale: 0.2, alpha: 0.66 },
-      { asset: "oak-rock-2", x: 298, yOffset: 3, scale: 3.5, alpha: 0.72 },
-      { asset: "oak-grass-3", x: 696, yOffset: 2, scale: 2.7, alpha: 0.78 }
-    ],
-    palette: {
-      sky: ["#10393e", "#18626e", "#103037"],
-      haze: "rgba(118, 215, 220, 0.13)",
-      ridgeFar: "#17464e",
-      ridgeNear: "#133c43",
-      floorBase: "#205057",
-      floorTop: "#58adb5",
-      stepBase: "#2d666f",
-      stepTop: "#7ecbd0",
-      pathBase: "#315257",
-      pathTop: "#74b9bd",
-      wallBase: "#22565d",
-      wallEdge: "#79cdd1"
-    },
-    floorY: FOREST_FLOOR_Y,
-    platforms: [
-      { x: FOREST_LEFT - 32, y: FOREST_FLOOR_Y, width: FOREST_RIGHT - FOREST_LEFT + 64, height: 110, type: "forest-floor" },
-      { x: 104, y: FOREST_FLOOR_Y - 86, width: 126, height: 18, type: "forest-step" },
-      { x: 268, y: FOREST_FLOOR_Y - 142, width: 124, height: 18, type: "forest-step" },
-      { x: 428, y: FOREST_FLOOR_Y - 96, width: 120, height: 18, type: "forest-step" },
-      { x: 586, y: FOREST_FLOOR_Y - 154, width: 132, height: 18, type: "forest-step" },
-      { x: 748, y: FOREST_FLOOR_Y - 104, width: 118, height: 18, type: "forest-step" },
-      { x: 196, y: FOREST_FLOOR_Y - 220, width: 152, height: 16, type: "forest-step" },
-      { x: 398, y: FOREST_FLOOR_Y - 248, width: 160, height: 16, type: "forest-step" },
-      { x: 634, y: FOREST_FLOOR_Y - 228, width: 142, height: 16, type: "forest-step" }
-    ],
-    walls: [
-      { x: 356, y: FOREST_FLOOR_Y - 214, width: 24, height: 214, type: "forest-wall" },
-      { x: 566, y: FOREST_FLOOR_Y - 246, width: 24, height: 246, type: "forest-wall" }
-    ],
-    transitions: [
-      {
-        x: FOREST_LEFT,
-        y: FOREST_FLOOR_Y - 132,
-        width: 20,
-        height: 132,
-        targetZone: 5,
-        spawnX: FOREST_RIGHT - 96,
-        spawnY: FOREST_FLOOR_Y - PLAYER_HEIGHT
-      },
-      {
-        x: FOREST_RIGHT - 20,
-        y: FOREST_FLOOR_Y - 132,
-        width: 20,
-        height: 132,
-        targetZone: 7,
-        spawnX: FOREST_LEFT + 34,
-        spawnY: FOREST_FLOOR_Y - PLAYER_HEIGHT
-      }
-    ]
-  },
-  {
-    id: "moss-cavern-crucible",
-    title: "Cavern Crucible",
-    subtitle: "Layered kill-zones with wall-jump disengage routes",
-    theme: "mossy",
-    decorations: [
-      { asset: "moss-vines", x: 92, yOffset: 252, scale: 0.22, alpha: 0.68 },
-      { asset: "moss-vines", x: 474, yOffset: 262, scale: 0.24, alpha: 0.72 },
-      { asset: "moss-vines", x: 840, yOffset: 248, scale: 0.22, alpha: 0.68 },
-      { asset: "oak-rock-1", x: 250, yOffset: 3, scale: 3.8, alpha: 0.74 },
-      { asset: "oak-rock-3", x: 724, yOffset: 3, scale: 3.1, alpha: 0.74 }
-    ],
-    palette: {
-      sky: ["#0f3f45", "#1c6d78", "#12343d"],
-      haze: "rgba(128, 223, 230, 0.13)",
-      ridgeFar: "#184850",
-      ridgeNear: "#133e45",
-      floorBase: "#21535a",
-      floorTop: "#5fb7c1",
-      stepBase: "#2f6a73",
-      stepTop: "#84d4d7",
-      pathBase: "#32545a",
-      pathTop: "#7cc1c5",
-      wallBase: "#225860",
-      wallEdge: "#84d5d8"
-    },
-    floorY: FOREST_FLOOR_Y,
-    platforms: [
-      { x: FOREST_LEFT - 32, y: FOREST_FLOOR_Y, width: FOREST_RIGHT - FOREST_LEFT + 64, height: 110, type: "forest-floor" },
-      { x: 96, y: FOREST_FLOOR_Y - 72, width: 118, height: 18, type: "forest-step" },
-      { x: 242, y: FOREST_FLOOR_Y - 132, width: 132, height: 18, type: "forest-step" },
-      { x: 408, y: FOREST_FLOOR_Y - 92, width: 126, height: 18, type: "forest-step" },
-      { x: 566, y: FOREST_FLOOR_Y - 146, width: 116, height: 18, type: "forest-step" },
-      { x: 716, y: FOREST_FLOOR_Y - 86, width: 126, height: 18, type: "forest-step" },
-      { x: 292, y: FOREST_FLOOR_Y - 214, width: 166, height: 16, type: "forest-step" },
-      { x: 520, y: FOREST_FLOOR_Y - 242, width: 186, height: 16, type: "forest-step" },
-      { x: 140, y: FOREST_FLOOR_Y - 260, width: 96, height: 16, type: "forest-step" },
-      { x: 724, y: FOREST_FLOOR_Y - 268, width: 96, height: 16, type: "forest-step" }
-    ],
-    walls: [
-      { x: 226, y: FOREST_FLOOR_Y - 208, width: 22, height: 208, type: "forest-wall" },
-      { x: 486, y: FOREST_FLOOR_Y - 238, width: 24, height: 238, type: "forest-wall" },
-      { x: 686, y: FOREST_FLOOR_Y - 268, width: 24, height: 268, type: "forest-wall" }
-    ],
-    transitions: [
-      {
-        x: FOREST_LEFT,
-        y: FOREST_FLOOR_Y - 132,
-        width: 20,
-        height: 132,
-        targetZone: 6,
-        spawnX: FOREST_RIGHT - 96,
-        spawnY: FOREST_FLOOR_Y - PLAYER_HEIGHT
-      },
-      {
-        x: FOREST_RIGHT - 20,
-        y: FOREST_FLOOR_Y - 132,
-        width: 20,
-        height: 132,
-        targetZone: 8,
-        spawnX: FOREST_LEFT + 34,
-        spawnY: FOREST_FLOOR_Y - PLAYER_HEIGHT
-      }
-    ]
-  },
-  {
-    id: "stringstar-aqueduct",
-    title: "Twilight Aqueduct",
-    subtitle: "Quick pressure lanes under fractured star halls",
-    theme: "stringstar",
-    decorations: [
-      { asset: "oak-fence-1", x: 132, yOffset: 4, scale: 2.7, alpha: 0.74 },
-      { asset: "oak-sign", x: 316, yOffset: 4, scale: 2.8, alpha: 0.78 },
-      { asset: "oak-rock-1", x: 506, yOffset: 3, scale: 3.5, alpha: 0.74 },
-      { asset: "oak-grass-2", x: 712, yOffset: 2, scale: 2.6, alpha: 0.7 }
-    ],
-    palette: {
-      sky: ["#171637", "#2d305e", "#171733"],
-      haze: "rgba(154, 171, 255, 0.08)",
-      ridgeFar: "#252651",
-      ridgeNear: "#1b1d42",
-      floorBase: "#2e325a",
-      floorTop: "#6671aa",
-      stepBase: "#43497a",
-      stepTop: "#949dd0",
-      pathBase: "#3d4065",
-      pathTop: "#8e97c4",
-      wallBase: "#3a3d69",
-      wallEdge: "#a0a9da"
-    },
-    floorY: FOREST_FLOOR_Y,
-    platforms: [
-      { x: FOREST_LEFT - 32, y: FOREST_FLOOR_Y, width: FOREST_RIGHT - FOREST_LEFT + 64, height: 110, type: "forest-floor" },
-      { x: 102, y: FOREST_FLOOR_Y - 78, width: 126, height: 18, type: "forest-step" },
-      { x: 260, y: FOREST_FLOOR_Y - 132, width: 116, height: 18, type: "forest-step" },
-      { x: 414, y: FOREST_FLOOR_Y - 94, width: 122, height: 18, type: "forest-step" },
-      { x: 576, y: FOREST_FLOOR_Y - 152, width: 130, height: 18, type: "forest-step" },
-      { x: 742, y: FOREST_FLOOR_Y - 100, width: 120, height: 18, type: "forest-step" },
-      { x: 176, y: FOREST_FLOOR_Y - 218, width: 150, height: 16, type: "forest-step" },
-      { x: 390, y: FOREST_FLOOR_Y - 246, width: 162, height: 16, type: "forest-step" },
-      { x: 628, y: FOREST_FLOOR_Y - 226, width: 148, height: 16, type: "forest-step" }
-    ],
-    walls: [
-      { x: 234, y: FOREST_FLOOR_Y - 196, width: 24, height: 196, type: "forest-wall" },
-      { x: 548, y: FOREST_FLOOR_Y - 236, width: 24, height: 236, type: "forest-wall" },
-      { x: 702, y: FOREST_FLOOR_Y - 188, width: 22, height: 188, type: "forest-wall" }
-    ],
-    transitions: [
-      {
-        x: FOREST_LEFT,
-        y: FOREST_FLOOR_Y - 132,
-        width: 20,
-        height: 132,
-        targetZone: 7,
-        spawnX: FOREST_RIGHT - 96,
-        spawnY: FOREST_FLOOR_Y - PLAYER_HEIGHT
-      },
-      {
-        x: FOREST_RIGHT - 20,
-        y: FOREST_FLOOR_Y - 132,
-        width: 20,
-        height: 132,
-        targetZone: 9,
-        spawnX: FOREST_LEFT + 34,
-        spawnY: FOREST_FLOOR_Y - PLAYER_HEIGHT
-      }
-    ]
-  },
-  {
-    id: "stringstar-ward",
-    title: "Echoing Wards",
-    subtitle: "Vertical suppression arena with crossfire perches",
-    theme: "stringstar",
-    decorations: [
-      { asset: "oak-fence-2", x: 164, yOffset: 4, scale: 2.8, alpha: 0.74 },
-      { asset: "oak-rock-2", x: 338, yOffset: 3, scale: 3.3, alpha: 0.74 },
-      { asset: "oak-sign", x: 566, yOffset: 4, scale: 2.7, alpha: 0.78 },
-      { asset: "oak-grass-3", x: 784, yOffset: 2, scale: 2.5, alpha: 0.7 }
-    ],
-    palette: {
-      sky: ["#19173c", "#343369", "#1a1938"],
-      haze: "rgba(170, 178, 255, 0.08)",
-      ridgeFar: "#2a2759",
-      ridgeNear: "#201f48",
-      floorBase: "#323560",
-      floorTop: "#7077b9",
-      stepBase: "#4a4f84",
-      stepTop: "#9ea4d7",
-      pathBase: "#43476e",
-      pathTop: "#949bcb",
-      wallBase: "#3f4271",
-      wallEdge: "#aab1e1"
-    },
-    floorY: FOREST_FLOOR_Y,
-    platforms: [
-      { x: FOREST_LEFT - 32, y: FOREST_FLOOR_Y, width: FOREST_RIGHT - FOREST_LEFT + 64, height: 110, type: "forest-floor" },
-      { x: 86, y: FOREST_FLOOR_Y - 66, width: 144, height: 18, type: "forest-step" },
-      { x: 258, y: FOREST_FLOOR_Y - 118, width: 122, height: 18, type: "forest-step" },
-      { x: 412, y: FOREST_FLOOR_Y - 178, width: 128, height: 18, type: "forest-step" },
-      { x: 582, y: FOREST_FLOOR_Y - 128, width: 124, height: 18, type: "forest-step" },
-      { x: 748, y: FOREST_FLOOR_Y - 82, width: 118, height: 18, type: "forest-step" },
-      { x: 210, y: FOREST_FLOOR_Y - 224, width: 134, height: 16, type: "forest-step" },
-      { x: 430, y: FOREST_FLOOR_Y - 260, width: 152, height: 16, type: "forest-step" },
-      { x: 662, y: FOREST_FLOOR_Y - 242, width: 126, height: 16, type: "forest-step" }
-    ],
-    walls: [
-      { x: 384, y: FOREST_FLOOR_Y - 226, width: 24, height: 226, type: "forest-wall" },
-      { x: 610, y: FOREST_FLOOR_Y - 252, width: 26, height: 252, type: "forest-wall" },
-      { x: 154, y: FOREST_FLOOR_Y - 182, width: 20, height: 182, type: "forest-wall" }
-    ],
-    transitions: [
-      {
-        x: FOREST_LEFT,
-        y: FOREST_FLOOR_Y - 132,
-        width: 20,
-        height: 132,
-        targetZone: 8,
-        spawnX: FOREST_RIGHT - 96,
-        spawnY: FOREST_FLOOR_Y - PLAYER_HEIGHT
-      },
-      {
-        x: FOREST_RIGHT - 20,
-        y: FOREST_FLOOR_Y - 132,
-        width: 20,
-        height: 132,
-        targetZone: 10,
-        spawnX: FOREST_LEFT + 34,
-        spawnY: FOREST_FLOOR_Y - PLAYER_HEIGHT
-      }
-    ]
-  },
-  {
-    id: "oak-watchroad",
-    title: "Oak Watchroad",
-    subtitle: "Open duel lane with staggered ranged perches",
-    theme: "oak-woods",
-    decorations: [
-      { asset: "oak-fence-2", x: 160, yOffset: 4, scale: 2.8, alpha: 0.84 },
-      { asset: "oak-lamp", x: 336, yOffset: 4, scale: 3, alpha: 0.94 },
-      { asset: "oak-sign", x: 534, yOffset: 4, scale: 2.8, alpha: 0.86 },
-      { asset: "oak-rock-1", x: 752, yOffset: 3, scale: 3.6, alpha: 0.74 }
-    ],
-    palette: {
-      sky: ["#142720", "#244436", "#11211b"],
-      haze: "rgba(138, 203, 170, 0.08)",
-      ridgeFar: "#1d352a",
-      ridgeNear: "#162920",
-      floorBase: "#2a4234",
-      floorTop: "#5f9870",
-      stepBase: "#3f5c4a",
-      stepTop: "#8ec79a",
-      pathBase: "#3f4938",
-      pathTop: "#7ca98a",
-      wallBase: "#304b3c",
-      wallEdge: "#8dc8a0"
-    },
-    floorY: FOREST_FLOOR_Y,
-    platforms: [
-      { x: FOREST_LEFT - 32, y: FOREST_FLOOR_Y, width: FOREST_RIGHT - FOREST_LEFT + 64, height: 110, type: "forest-floor" },
-      { x: 96, y: FOREST_FLOOR_Y - 60, width: 150, height: 18, type: "forest-step" },
-      { x: 278, y: FOREST_FLOOR_Y - 112, width: 126, height: 18, type: "forest-step" },
-      { x: 444, y: FOREST_FLOOR_Y - 74, width: 116, height: 18, type: "forest-step" },
-      { x: 596, y: FOREST_FLOOR_Y - 126, width: 132, height: 18, type: "forest-step" },
-      { x: 760, y: FOREST_FLOOR_Y - 78, width: 116, height: 18, type: "forest-step" },
-      { x: 214, y: FOREST_FLOOR_Y - 188, width: 156, height: 16, type: "forest-step" },
-      { x: 418, y: FOREST_FLOOR_Y - 214, width: 164, height: 16, type: "forest-step" },
-      { x: 640, y: FOREST_FLOOR_Y - 198, width: 146, height: 16, type: "forest-step" }
-    ],
-    walls: [
-      { x: 250, y: FOREST_FLOOR_Y - 170, width: 22, height: 170, type: "forest-wall" },
-      { x: 560, y: FOREST_FLOOR_Y - 220, width: 24, height: 220, type: "forest-wall" }
-    ],
-    transitions: [
-      {
-        x: FOREST_LEFT,
-        y: FOREST_FLOOR_Y - 132,
-        width: 20,
-        height: 132,
-        targetZone: 9,
-        spawnX: FOREST_RIGHT - 96,
-        spawnY: FOREST_FLOOR_Y - PLAYER_HEIGHT
-      },
-      {
-        x: FOREST_RIGHT - 20,
-        y: FOREST_FLOOR_Y - 132,
-        width: 20,
-        height: 132,
-        targetZone: 11,
-        spawnX: FOREST_LEFT + 34,
-        spawnY: FOREST_FLOOR_Y - PLAYER_HEIGHT
-      }
-    ]
-  },
-  {
-    id: "oak-bastion-gate",
-    title: "Bastion Gate",
-    subtitle: "Final layered holdout with fallback towers",
-    theme: "oak-woods",
-    decorations: [
-      { asset: "oak-fence-1", x: 136, yOffset: 4, scale: 2.8, alpha: 0.82 },
-      { asset: "oak-lamp", x: 304, yOffset: 4, scale: 3.1, alpha: 0.95 },
-      { asset: "oak-rock-3", x: 486, yOffset: 3, scale: 3.1, alpha: 0.74 },
-      { asset: "oak-sign", x: 664, yOffset: 4, scale: 2.8, alpha: 0.86 },
-      { asset: "oak-grass-1", x: 806, yOffset: 2, scale: 2.8, alpha: 0.8 }
-    ],
-    palette: {
-      sky: ["#112219", "#1f3c2d", "#0f1e17"],
-      haze: "rgba(126, 188, 154, 0.08)",
-      ridgeFar: "#1b3024",
-      ridgeNear: "#14261d",
-      floorBase: "#263b2f",
-      floorTop: "#578765",
-      stepBase: "#395443",
-      stepTop: "#83b58d",
-      pathBase: "#394437",
-      pathTop: "#719c7d",
-      wallBase: "#2d4437",
-      wallEdge: "#81b791"
-    },
-    floorY: FOREST_FLOOR_Y,
-    platforms: [
-      { x: FOREST_LEFT - 32, y: FOREST_FLOOR_Y, width: FOREST_RIGHT - FOREST_LEFT + 64, height: 110, type: "forest-floor" },
-      { x: 104, y: FOREST_FLOOR_Y - 72, width: 142, height: 18, type: "forest-step" },
-      { x: 274, y: FOREST_FLOOR_Y - 126, width: 128, height: 18, type: "forest-step" },
-      { x: 438, y: FOREST_FLOOR_Y - 86, width: 132, height: 18, type: "forest-step" },
-      { x: 612, y: FOREST_FLOOR_Y - 142, width: 140, height: 18, type: "forest-step" },
-      { x: 778, y: FOREST_FLOOR_Y - 90, width: 96, height: 18, type: "forest-step" },
-      { x: 208, y: FOREST_FLOOR_Y - 202, width: 164, height: 16, type: "forest-step" },
-      { x: 432, y: FOREST_FLOOR_Y - 236, width: 170, height: 16, type: "forest-step" },
-      { x: 676, y: FOREST_FLOOR_Y - 214, width: 152, height: 16, type: "forest-step" },
-      { x: 342, y: FOREST_FLOOR_Y - 292, width: 188, height: 16, type: "forest-step" }
-    ],
-    walls: [
-      { x: 252, y: FOREST_FLOOR_Y - 192, width: 24, height: 192, type: "forest-wall" },
-      { x: 584, y: FOREST_FLOOR_Y - 244, width: 24, height: 244, type: "forest-wall" },
-      { x: 742, y: FOREST_FLOOR_Y - 182, width: 22, height: 182, type: "forest-wall" }
-    ],
-    transitions: [
-      {
-        x: FOREST_LEFT,
-        y: FOREST_FLOOR_Y - 132,
-        width: 20,
-        height: 132,
-        targetZone: 10,
-        spawnX: FOREST_RIGHT - 96,
-        spawnY: FOREST_FLOOR_Y - PLAYER_HEIGHT
-      }
-    ]
+    transitions: []
   }
 ];
 
@@ -1027,35 +501,15 @@ const assets = {
       lights: createExactAsset("assets/textures/Art Forest/Free Pixel Art Forest/PNG/Background layers/Layer_0007_Lights.png"),
       tiles: createExactAsset("assets/textures/Art Forest/Free Pixel Art Forest/PNG/Background layers/Layer_0003_6.png", true)
     },
-    mossy: {
-      hills: createExactAsset("assets/textures/MossyAssets/Mossy Tileset/Mossy - MossyHills.png"),
-      backdrop: createExactAsset("assets/textures/MossyAssets/Mossy Tileset/Mossy - BackgroundDecoration.png"),
-      vines: createExactAsset("assets/textures/MossyAssets/Mossy Tileset/Mossy - Hanging Plants.png"),
-      details: createExactAsset("assets/textures/MossyAssets/Mossy Tileset/Mossy - Decorations&Hazards.png"),
-      tiles: createExactAsset("assets/textures/MossyAssets/Mossy Tileset/Mossy - FloatingPlatforms.png", true)
+    darkTemple: {
+      bg: createExactAsset("assets/textures/TmFFA7.jpg")
     },
-    oakWoods: {
-      layer1: createExactAsset("assets/textures/oak_woods/oak_woods_v1.0/background/background_layer_1.png"),
-      layer2: createExactAsset("assets/textures/oak_woods/oak_woods_v1.0/background/background_layer_2.png"),
-      layer3: createExactAsset("assets/textures/oak_woods/oak_woods_v1.0/background/background_layer_3.png"),
-      tiles: createExactAsset("assets/textures/oak_woods/oak_woods_v1.0/oak_woods_tileset.png", true),
-      lamp: createExactAsset("assets/textures/oak_woods/oak_woods_v1.0/decorations/lamp.png"),
-      sign: createExactAsset("assets/textures/oak_woods/oak_woods_v1.0/decorations/sign.png"),
-      fence1: createExactAsset("assets/textures/oak_woods/oak_woods_v1.0/decorations/fence_1.png"),
-      fence2: createExactAsset("assets/textures/oak_woods/oak_woods_v1.0/decorations/fence_2.png"),
-      grass1: createExactAsset("assets/textures/oak_woods/oak_woods_v1.0/decorations/grass_1.png"),
-      grass2: createExactAsset("assets/textures/oak_woods/oak_woods_v1.0/decorations/grass_2.png"),
-      grass3: createExactAsset("assets/textures/oak_woods/oak_woods_v1.0/decorations/grass_3.png"),
-      rock1: createExactAsset("assets/textures/oak_woods/oak_woods_v1.0/decorations/rock_1.png"),
-      rock2: createExactAsset("assets/textures/oak_woods/oak_woods_v1.0/decorations/rock_2.png"),
-      rock3: createExactAsset("assets/textures/oak_woods/oak_woods_v1.0/decorations/rock_3.png")
+    crimsonCavern: {
+      bg: createExactAsset("assets/textures/UFACsd.jpg")
     },
-    stringstar: {
-      bg0: createExactAsset("assets/textures/stringstar fields/background_0.png"),
-      bg1: createExactAsset("assets/textures/stringstar fields/background_1.png"),
-      bg2: createExactAsset("assets/textures/stringstar fields/background_2.png"),
-      tiles: createExactAsset("assets/textures/stringstar fields/tileset.png", true)
-    }
+    ruinedCitadel: {
+      bg: createExactAsset("assets/textures/xSUk05.jpg")
+    },
   },
   boss: {
     idle: createExactAsset("assets/characters/Enemis/enemy sprites/Gotoku/Idle.png"),
@@ -1075,6 +529,7 @@ let cameraY = WORLD_HEIGHT - VIEW_HEIGHT;
 let cameraLookAhead = 0;
 let animationClock = 0;
 let gameInputActive = false;
+let pauseMenuOpen = false;
 let currentScene = "tower";
 let forestRouteIndex = 0;
 let towerProgressY = player.spawnY;
@@ -1281,6 +736,71 @@ function setupCharacterSelect() {
     player.dashCooldown = 0;
     persistCharacterId(activeCharacterId);
   });
+}
+
+function updateFullscreenButtonLabel() {
+  if (!fullscreenButton) {
+    return;
+  }
+
+  fullscreenButton.textContent = document.fullscreenElement ? "Exit Fullscreen" : "Enter Fullscreen";
+}
+
+function setPauseMenuOpen(open) {
+  pauseMenuOpen = open;
+
+  if (pauseMenu) {
+    pauseMenu.hidden = !open;
+    pauseMenu.setAttribute("aria-hidden", String(!open));
+  }
+
+  if (open) {
+    clearInputState();
+    gameInputActive = false;
+    characterSelect?.focus({ preventScroll: true });
+    return;
+  }
+
+  activateGameInput();
+}
+
+function togglePauseMenu() {
+  setPauseMenuOpen(!pauseMenuOpen);
+}
+
+async function toggleFullscreenMode() {
+  try {
+    if (document.fullscreenElement) {
+      await document.exitFullscreen();
+    } else {
+      await document.documentElement.requestFullscreen();
+    }
+  } catch {}
+
+  updateFullscreenButtonLabel();
+}
+
+function setupPauseMenu() {
+  if (!pauseMenu) {
+    return;
+  }
+
+  resumeButton?.addEventListener("click", () => {
+    setPauseMenuOpen(false);
+  });
+
+  restartButton?.addEventListener("click", () => {
+    resetPlayer();
+    setPauseMenuOpen(false);
+  });
+
+  fullscreenButton?.addEventListener("click", () => {
+    void toggleFullscreenMode();
+  });
+
+  document.addEventListener("fullscreenchange", updateFullscreenButtonLabel);
+  setPauseMenuOpen(false);
+  updateFullscreenButtonLabel();
 }
 
 function getActiveCharacter() {
@@ -1636,7 +1156,19 @@ function getForestZone() {
   return forestRouteZones[getForestRouteIndex()] || forestRouteZones[0];
 }
 
+function isBonfireZone() {
+  return getForestRouteIndex() === 0;
+}
+
 function getForestZonePalette() {
+  const zone = getForestZone();
+  if (zone?.palette) {
+    return {
+      ...FOREST_ZONE_DEFAULT_PALETTE,
+      ...zone.palette
+    };
+  }
+
   const themeId = getForestThemeId();
 
   if (themeId === "art-forest") {
@@ -1653,99 +1185,16 @@ function getForestZonePalette() {
     };
   }
 
-  if (themeId === "mossy") {
-    return {
-      ...FOREST_ZONE_DEFAULT_PALETTE,
-      floorBase: "#143941",
-      floorTop: "#4d9aa3",
-      stepBase: "#1b4951",
-      stepTop: "#67b8be",
-      pathBase: "#1d4a50",
-      pathTop: "#6ebbc1",
-      wallBase: "#17424a",
-      wallEdge: "#74c1c8"
-    };
-  }
-
-  if (themeId === "oak-woods") {
-    return {
-      ...FOREST_ZONE_DEFAULT_PALETTE,
-      floorBase: "#233a2c",
-      floorTop: "#60916c",
-      stepBase: "#2e4837",
-      stepTop: "#77ab81",
-      pathBase: "#334b39",
-      pathTop: "#7fb08b",
-      wallBase: "#274032",
-      wallEdge: "#7faf87"
-    };
-  }
-
-  if (themeId === "stringstar") {
-    return {
-      ...FOREST_ZONE_DEFAULT_PALETTE,
-      floorBase: "#24263c",
-      floorTop: "#636ca8",
-      stepBase: "#2d2f4a",
-      stepTop: "#7d88c4",
-      pathBase: "#313457",
-      pathTop: "#8e99d4",
-      wallBase: "#272a44",
-      wallEdge: "#8892cf"
-    };
-  }
-
   return FOREST_ZONE_DEFAULT_PALETTE;
 }
 
 function getForestThemeId() {
-  const themeBlocks = ["art-forest", "mossy", "oak-woods", "stringstar"];
-  const blockIndex = clamp(Math.floor(getForestRouteIndex() / 3), 0, themeBlocks.length - 1);
-  return themeBlocks[blockIndex];
+  return getForestZone()?.theme || "art-forest";
 }
 
 function getForestThemePatternAssets() {
-  const themes = assets.forestThemes || {};
-  const themeId = getForestThemeId();
-
-  if (themeId === "art-forest") {
-    return {
-      floor: themes.oakWoods?.tiles || null,
-      step: null,
-      wall: null,
-      path: null
-    };
-  }
-
-  if (themeId === "mossy") {
-    return {
-      floor: themes.mossy?.tiles || null,
-      step: null,
-      wall: null,
-      path: null
-    };
-  }
-
-  if (themeId === "oak-woods") {
-    return {
-      floor: themes.oakWoods?.tiles || null,
-      step: null,
-      wall: null,
-      path: null
-    };
-  }
-
-  if (themeId === "stringstar") {
-    return {
-      floor: themes.stringstar?.tiles || null,
-      step: null,
-      wall: null,
-      path: null
-    };
-  }
-
   return {
-    floor: themes.oakWoods?.tiles || themes.mossy?.tiles || themes.stringstar?.tiles || null,
+    floor: null,
     step: null,
     wall: null,
     path: null
@@ -1753,64 +1202,12 @@ function getForestThemePatternAssets() {
 }
 
 function getForestPatternAlpha(themeId, surfaceType) {
-  if (surfaceType !== "floor") {
-    return 0;
-  }
-
-  if (themeId === "mossy") {
-    return 0.44;
-  }
-
-  if (themeId === "oak-woods") {
-    return 0.4;
-  }
-
-  if (themeId === "stringstar") {
-    return 0.36;
-  }
-
-  return 0.34;
+  return surfaceType === "floor" ? 0.34 : 0;
 }
 
-function drawForestPlatformThemeDetails(platform, platformType, themeId) {
-  return;
-}
-
-function drawForestWallThemeDetails(wall, themeId) {
-  return;
-}
 
 function getForestDecorationAsset(assetId) {
-  const themeAssets = assets.forestThemes || {};
-  const oak = themeAssets.oakWoods || {};
-  const mossy = themeAssets.mossy || {};
-
-  switch (assetId) {
-    case "oak-lamp":
-      return oak.lamp || null;
-    case "oak-sign":
-      return oak.sign || null;
-    case "oak-fence-1":
-      return oak.fence1 || null;
-    case "oak-fence-2":
-      return oak.fence2 || null;
-    case "oak-grass-1":
-      return oak.grass1 || null;
-    case "oak-grass-2":
-      return oak.grass2 || null;
-    case "oak-grass-3":
-      return oak.grass3 || null;
-    case "oak-rock-1":
-      return oak.rock1 || null;
-    case "oak-rock-2":
-      return oak.rock2 || null;
-    case "oak-rock-3":
-      return oak.rock3 || null;
-    case "moss-vines":
-      return mossy.vines || null;
-    default:
-      return null;
-  }
+  return null;
 }
 
 function getForestFloorY() {
@@ -1849,11 +1246,21 @@ function isPlatformActive(platform) {
 }
 
 function getForestRoutePlatforms() {
+  const zone = getForestZone();
+  if (Array.isArray(zone?.platforms) && zone.platforms.length > 0) {
+    return zone.platforms;
+  }
+
   const floorY = getForestFloorY();
   return [{ x: FOREST_LEFT - 32, y: floorY, width: FOREST_RIGHT - FOREST_LEFT + 64, height: 110, type: "forest-floor" }];
 }
 
 function getForestRouteTransitions() {
+  const zone = getForestZone();
+  if (Array.isArray(zone?.transitions) && zone.transitions.length > 0) {
+    return zone.transitions;
+  }
+
   const index = getForestRouteIndex();
   const floorY = getForestFloorY();
   const transitions = [];
@@ -1900,6 +1307,11 @@ function getScenePlatforms() {
 function getSceneWalls() {
   if (!isForestScene()) {
     return [];
+  }
+
+  const zone = getForestZone();
+  if (Array.isArray(zone?.walls)) {
+    return zone.walls;
   }
 
   return [];
@@ -2047,7 +1459,7 @@ function activateForestCheckpointAndHeal() {
     checkpoint.scene = "forest";
     checkpoint.forestZone = getForestRouteIndex();
     checkpoint.x = clamp(forestBonfire.x + 42 - player.width / 2, FOREST_LEFT + 8, FOREST_RIGHT - player.width - 8);
-    checkpoint.y = getForestFloorY() - player.height;
+    checkpoint.y = forestBonfire.floorY - player.height;
   }
 
   if (player.health < player.maxHealth) {
@@ -2063,7 +1475,7 @@ function updateForestBonfire(deltaTime) {
   forestBonfire.playerNearby = false;
   forestBonfire.healFlashTime = Math.max(0, forestBonfire.healFlashTime - deltaTime);
 
-  if (!isForestScene() || player.dead || getForestRouteIndex() !== 0) {
+  if (!isForestScene() || player.dead || !isBonfireZone()) {
     return;
   }
 
@@ -2343,6 +1755,29 @@ function resetPlayer() {
   player.deathTimer = 0;
   cameraLookAhead = 0;
   cameraY = clamp(FLOOR_Y - VIEW_HEIGHT, 0, WORLD_HEIGHT - VIEW_HEIGHT);
+
+  if (DEV_SPAWN_AT_BONFIRE) {
+    const bonfireSpawnX = clamp(
+      forestBonfire.x + 42 - player.width / 2,
+      FOREST_LEFT + 8,
+      FOREST_RIGHT - player.width - 8
+    );
+    const bonfireSpawnY = forestBonfire.floorY - player.height;
+    currentScene = "forest";
+    encounter.bossStarted = true;
+    encounter.bossDefeated = true;
+    encounter.forestUnlocked = true;
+    checkpoint.active = true;
+    checkpoint.scene = "forest";
+    checkpoint.forestZone = 0;
+    checkpoint.x = bonfireSpawnX;
+    checkpoint.y = bonfireSpawnY;
+    forestBonfire.active = true;
+    player.x = bonfireSpawnX;
+    player.y = bonfireSpawnY;
+    cameraY = 0;
+  }
+
   resetBoss();
   resetTeleporters();
 }
@@ -2685,6 +2120,10 @@ function damagePlayer(amount) {
 }
 
 function activateGameInput() {
+  if (pauseMenuOpen) {
+    return;
+  }
+
   gameInputActive = true;
   canvas.focus({ preventScroll: true });
 }
@@ -2699,6 +2138,17 @@ function gameHasFocus() {
 }
 
 function handleKeyChange(event, pressed) {
+  if (event.code === "Escape" && pressed) {
+    event.preventDefault();
+    event.stopPropagation();
+    togglePauseMenu();
+    return;
+  }
+
+  if (event.code === "Escape") {
+    return;
+  }
+
   const isGameKey = GAME_CONTROL_KEYS.has(event.code);
   const shouldBlockPageNavigation = PAGE_NAV_KEYS.has(event.code);
   const shouldHandleGameInput = isGameKey && gameHasFocus();
@@ -2711,6 +2161,10 @@ function handleKeyChange(event, pressed) {
   event.stopPropagation();
 
   if (!shouldHandleGameInput) {
+    return;
+  }
+
+  if (pauseMenuOpen) {
     return;
   }
 
@@ -2759,6 +2213,10 @@ canvas.addEventListener("blur", () => {
 document.addEventListener(
   "pointerdown",
   (event) => {
+    if (pauseMenuOpen) {
+      return;
+    }
+
     if (stageFrame && stageFrame.contains(event.target)) {
       activateGameInput();
       return;
@@ -2771,6 +2229,11 @@ document.addEventListener(
 
 canvas.addEventListener("mousedown", (event) => {
   event.preventDefault();
+
+  if (pauseMenuOpen) {
+    return;
+  }
+
   activateGameInput();
 
   if (event.button === 0) {
@@ -2805,6 +2268,24 @@ function resolvePlatforms(previousBottom) {
   const feetRight = player.x + player.width - 5;
 
   for (const platform of getScenePlatforms()) {
+    if (platform.type === "forest-ramp") {
+      const withinX = feetRight > platform.x && feetLeft < platform.x + platform.width;
+      if (!withinX || player.vy < 0) continue;
+      const rampY2 = platform.y2 !== undefined
+        ? platform.y2
+        : platform.y - platform.width * Math.tan((platform.degrees || 0) * Math.PI / 180);
+      const centerX = clamp((feetLeft + feetRight) / 2, platform.x, platform.x + platform.width);
+      const t = (centerX - platform.x) / platform.width;
+      const surfaceY = platform.y + t * (rampY2 - platform.y);
+      if (previousBottom <= surfaceY + 8 && player.y + player.height >= surfaceY) {
+        player.y = surfaceY - player.height;
+        player.vy = 0;
+        player.grounded = true;
+        return platform;
+      }
+      continue;
+    }
+
     const withinX = feetRight > platform.x && feetLeft < platform.x + platform.width;
     const crossedTop = previousBottom <= platform.y + 8 && player.y + player.height >= platform.y;
 
@@ -3039,6 +2520,10 @@ function updateBoss(deltaTime) {
 }
 
 function update(deltaTime) {
+  if (pauseMenuOpen) {
+    return;
+  }
+
   animationClock += deltaTime;
   updateBoss(deltaTime);
   updateTeleporters(deltaTime);
@@ -3349,137 +2834,43 @@ function drawForestThemeBackdrop() {
     return;
   }
 
-  if (themeId === "mossy") {
-    drawBackdropTiled(themes.mossy?.backdrop, 0, VIEW_HEIGHT, 0.48 + stageVariant * 0.05, 0.2 + stageVariant * 0.15);
-    drawBackdropTiled(themes.mossy?.hills, VIEW_HEIGHT - 296, 312 * variantDepth, 0.38 + stageVariant * 0.05, 0.85 + stageVariant * 0.25);
-    drawBackdropTiled(themes.mossy?.details, VIEW_HEIGHT - 278, 286 * variantDepth, 0.26 + stageVariant * 0.04, 1.2 + stageVariant * 0.35);
-    drawBackdropTiled(themes.mossy?.vines, -96, 196 * variantDepth, 0.24 + stageVariant * 0.04, 1.4 + stageVariant * 0.35, "multiply");
+  if (themeId === "dark-temple") {
+    if (themes.darkTemple?.bg?.loaded) {
+      context.drawImage(themes.darkTemple.bg.image, 0, 0, VIEW_WIDTH, VIEW_HEIGHT);
+    }
     return;
   }
 
-  if (themeId === "oak-woods") {
-    drawBackdropTiled(themes.oakWoods?.layer1, 0, VIEW_HEIGHT, 0.42 + stageVariant * 0.04, 0.35 + stageVariant * 0.2);
-    drawBackdropTiled(themes.oakWoods?.layer2, VIEW_HEIGHT - 242, 244 * variantDepth, 0.34 + stageVariant * 0.04, 1 + stageVariant * 0.3);
-    drawBackdropTiled(themes.oakWoods?.layer3, VIEW_HEIGHT - 258, 260 * variantDepth, 0.3 + stageVariant * 0.03, 1.55 + stageVariant * 0.35);
-    drawBackdropTiled(themes.oakWoods?.layer3, -68, 170 * variantDepth, 0.2 + stageVariant * 0.03, 1.9 + stageVariant * 0.35, "multiply");
+  if (themeId === "crimson-cavern") {
+    if (themes.crimsonCavern?.bg?.loaded) {
+      context.drawImage(themes.crimsonCavern.bg.image, 0, 0, VIEW_WIDTH, VIEW_HEIGHT);
+    }
     return;
   }
 
-  if (themeId === "stringstar") {
-    drawBackdropTiled(themes.stringstar?.bg0, 0, VIEW_HEIGHT, 0.4 + stageVariant * 0.04, 0.35 + stageVariant * 0.2);
-    drawBackdropTiled(themes.stringstar?.bg1, VIEW_HEIGHT - 236, 236 * variantDepth, 0.32 + stageVariant * 0.04, 1 + stageVariant * 0.3);
-    drawBackdropTiled(themes.stringstar?.bg2, VIEW_HEIGHT - 248, 248 * variantDepth, 0.28 + stageVariant * 0.03, 1.5 + stageVariant * 0.35);
-    drawBackdropTiled(themes.stringstar?.bg2, -58, 156 * variantDepth, 0.16 + stageVariant * 0.03, 1.9 + stageVariant * 0.35, "multiply");
+  if (themeId === "ruined-citadel") {
+    if (themes.ruinedCitadel?.bg?.loaded) {
+      context.drawImage(themes.ruinedCitadel.bg.image, 0, 0, VIEW_WIDTH, VIEW_HEIGHT);
+    }
     return;
   }
+
 }
 
-function drawStringstarSkyFragments() {
-  if (!isForestScene() || getForestThemeId() !== "stringstar") {
-    return;
-  }
-
-  const tilesAsset = assets.forestThemes?.stringstar?.tiles;
-  if (!tilesAsset || !tilesAsset.loaded) {
-    return;
-  }
-
-  const image = tilesAsset.image;
-  const tileSize = 16;
-  const cols = Math.floor(image.naturalWidth / tileSize);
-  const rows = Math.floor(image.naturalHeight / tileSize);
-  if (cols < 2 || rows < 2) {
-    return;
-  }
-
-  const zoneIndex = getForestRouteIndex();
-  const stageVariant = zoneIndex % 3;
-  const floorScreenY = getForestFloorY() - cameraY;
-  const yLimit = Math.max(72, Math.min(VIEW_HEIGHT - 120, floorScreenY - 90));
-  const pieceCount = 6 + stageVariant;
-
-  context.save();
-  context.globalCompositeOperation = "screen";
-
-  for (let i = 0; i < pieceCount; i += 1) {
-    const seed = zoneIndex * 131 + i * 73;
-    const srcX = ((seed % (cols - 1)) + 1) * tileSize;
-    const srcY = (((seed >> 3) % Math.min(rows, 6)) + 1) * tileSize;
-    const srcW = tileSize;
-    const srcH = tileSize;
-    const drawScale = 1.5 + ((seed >> 1) % 3) * 0.35;
-    const drawW = srcW * drawScale;
-    const drawH = srcH * drawScale;
-    const drawX = 26 + ((seed * 37) % Math.max(1, VIEW_WIDTH - 64));
-    const drawY = 20 + ((seed * 17) % Math.max(1, yLimit - 24));
-    const alpha = 0.1 + (i % 3) * 0.04;
-
-    context.globalAlpha = alpha;
-    context.drawImage(image, srcX, srcY, srcW, srcH, drawX, drawY, drawW, drawH);
-
-    context.globalAlpha = alpha * 0.5;
-    context.fillStyle = "#8ca4ff";
-    context.beginPath();
-    context.arc(drawX + drawW / 2, drawY + drawH / 2, drawW * 0.32, 0, Math.PI * 2);
-    context.fill();
-  }
-
-  context.restore();
-}
 
 function drawForestDecorations() {
   if (!isForestScene()) {
     return;
   }
 
+  const zone = getForestZone();
   const themeId = getForestThemeId();
   const zoneIndex = getForestRouteIndex();
   const floorY = getForestFloorY();
   const leftBound = FOREST_LEFT + 54;
   const rightBound = FOREST_RIGHT - 54;
 
-  const staticDecor = [];
-  const rockOptions = ["oak-rock-1", "oak-rock-2", "oak-rock-3"];
-  const grassOptions = ["oak-grass-1", "oak-grass-2", "oak-grass-3"];
-  const vineCount = themeId === "mossy" ? 2 : 0;
-  const rockCount = themeId === "stringstar" ? 0 : themeId === "mossy" ? 1 : 2;
-  const grassCount = themeId === "stringstar" ? 1 : themeId === "mossy" ? 3 : 2;
-
-  for (let i = 0; i < rockCount; i += 1) {
-    const seed = zoneIndex * 41 + i * 67;
-    const x = leftBound + (seed % Math.max(1, rightBound - leftBound));
-    staticDecor.push({
-      asset: rockOptions[seed % rockOptions.length],
-      x,
-      yOffset: 0,
-      scale: 2.3 + ((seed >> 2) % 3) * 0.18,
-      alpha: 0.34
-    });
-  }
-
-  for (let i = 0; i < grassCount; i += 1) {
-    const seed = zoneIndex * 59 + i * 71;
-    const x = leftBound + (seed % Math.max(1, rightBound - leftBound));
-    staticDecor.push({
-      asset: grassOptions[seed % grassOptions.length],
-      x,
-      yOffset: 0,
-      scale: 2.1 + ((seed >> 1) % 3) * 0.16,
-      alpha: 0.32
-    });
-  }
-
-  for (let i = 0; i < vineCount; i += 1) {
-    const seed = zoneIndex * 83 + i * 139;
-    const x = leftBound + (seed % Math.max(1, rightBound - leftBound));
-    staticDecor.push({
-      asset: "moss-vines",
-      x,
-      yOffset: 180 + i * 28,
-      scale: 0.2 + i * 0.04,
-      alpha: 0.18 + i * 0.04
-    });
-  }
+  const staticDecor = Array.isArray(zone?.decorations) ? [...zone.decorations] : [];
 
   for (const decoration of staticDecor) {
     const asset = getForestDecorationAsset(decoration.asset);
@@ -3533,7 +2924,6 @@ function drawSky() {
     context.fillStyle = "#07090b";
     context.fillRect(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
     drawForestThemeBackdrop();
-    drawStringstarSkyFragments();
     return;
   }
 
@@ -3717,6 +3107,7 @@ function drawPlatforms() {
   const forestThemeId = isForestScene() ? getForestThemeId() : "default";
 
   for (const platform of getScenePlatforms()) {
+    if (platform.invisible) continue;
     if (platform.y > cameraY + VIEW_HEIGHT + 60 || platform.y + platform.height < cameraY - 60) {
       continue;
     }
@@ -3758,6 +3149,38 @@ function drawPlatforms() {
       context.fillStyle = forestPalette.floorTop;
       context.fillRect(platform.x, platform.y, platform.width, 8);
       context.restore();
+      continue;
+    }
+
+    if (platform.type === "forest-ramp") {
+      const thick = 18;
+      const rampY2 = platform.y2 !== undefined
+        ? platform.y2
+        : platform.y - platform.width * Math.tan((platform.degrees || 0) * Math.PI / 180);
+      context.beginPath();
+      context.moveTo(platform.x, platform.y);
+      context.lineTo(platform.x + platform.width, rampY2);
+      context.lineTo(platform.x + platform.width, rampY2 + thick);
+      context.lineTo(platform.x, platform.y + thick);
+      context.closePath();
+      context.fillStyle = "#4a3c2e";
+      context.fill();
+      // underside shadow
+      context.beginPath();
+      context.moveTo(platform.x, platform.y + thick);
+      context.lineTo(platform.x + platform.width, rampY2 + thick);
+      context.lineTo(platform.x + platform.width, rampY2 + thick + 6);
+      context.lineTo(platform.x, platform.y + thick + 6);
+      context.closePath();
+      context.fillStyle = "rgba(0,0,0,0.35)";
+      context.fill();
+      // top edge highlight
+      context.beginPath();
+      context.moveTo(platform.x, platform.y);
+      context.lineTo(platform.x + platform.width, rampY2);
+      context.strokeStyle = "#9a8060";
+      context.lineWidth = 3;
+      context.stroke();
       continue;
     }
 
@@ -3853,6 +3276,7 @@ function drawSceneWalls() {
   context.translate(0, -cameraY);
 
   for (const wall of walls) {
+    if (wall.invisible) continue;
     if (wall.y > cameraY + VIEW_HEIGHT + 60 || wall.y + wall.height < cameraY - 60) {
       continue;
     }
@@ -4262,7 +3686,7 @@ function drawGoal() {
 }
 
 function drawForestBonfire() {
-  if (!isForestScene() || getForestRouteIndex() !== 0) {
+  if (!isForestScene() || !isBonfireZone()) {
     return;
   }
 
@@ -4503,9 +3927,9 @@ function drawOverlayText() {
     context.fillText(forestZone.title || "Forest Route", 24, 34);
     context.fillStyle = "rgba(170, 222, 160, 0.9)";
     context.font = "14px Georgia";
-    if (getForestRouteIndex() === 0 && forestBonfire.active) {
+    if (isBonfireZone() && forestBonfire.active) {
       context.fillText("Bonfire bound: checkpoint active and healing", 24, 56);
-    } else if (getForestRouteIndex() === 0) {
+    } else if (isBonfireZone()) {
       context.fillText("Touch the bonfire to bind checkpoint and heal", 24, 56);
     } else {
       context.fillText(`${routeLabel}  ${forestZone.subtitle || "Follow the route onward"}`, 24, 56);
@@ -4583,6 +4007,12 @@ function updateHud() {
   const meters = Math.round(heightPercent * 100);
   heightLabel.textContent = `Height ${meters} m`;
 
+  if (pauseMenuOpen) {
+    statusLabel.textContent = "Paused";
+    statusLabel.style.color = "#9fc4ff";
+    return;
+  }
+
   if (player.dead) {
     statusLabel.textContent = "Fallen";
     statusLabel.style.color = "#d97373";
@@ -4615,13 +4045,13 @@ function updateHud() {
 
   if (isForestScene()) {
     const forestZone = getForestZone();
-    if (getForestRouteIndex() === 0 && forestBonfire.playerNearby) {
+    if (isBonfireZone() && forestBonfire.playerNearby) {
       statusLabel.textContent = "Resting";
       statusLabel.style.color = "#f0c777";
       return;
     }
 
-    if (getForestRouteIndex() === 0 && forestBonfire.active) {
+    if (isBonfireZone() && forestBonfire.active) {
       statusLabel.textContent = "Checkpoint active";
       statusLabel.style.color = "#9fd18d";
       return;
@@ -4690,6 +4120,7 @@ function tick(now) {
 }
 
 setupCharacterSelect();
+setupPauseMenu();
 activateGameInput();
 resetPlayer();
 requestAnimationFrame((now) => {

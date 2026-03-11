@@ -1,0 +1,3 @@
+[0311/213719.155:ERROR:third_party\crashpad\crashpad\util\win\registration_protocol_win.cc:108] CreateFile: Ingen tilgang. (0x5)
+[0311/213738.078:ERROR:third_party\crashpad\crashpad\util\win\registration_protocol_win.cc:108] CreateFile: Ingen tilgang. (0x5)
+[0311/214124.543:ERROR:third_party\crashpad\crashpad\util\win\registration_protocol_win.cc:108] CreateFile: Ingen tilgang. (0x5)

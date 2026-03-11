@@ -4,6 +4,7 @@
   "private": true,
   "description": "A lightweight Jump King-style prototype with no external dependencies.",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "export:unreal": "node scripts/export-unreal-levels.js"
   }
 }
