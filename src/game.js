@@ -240,7 +240,7 @@ const forestRouteZones = [
       { x: FOREST_LEFT - 32, y: FOREST_FLOOR_Y, width: FOREST_RIGHT - FOREST_LEFT + 64, height: 110, type: "forest-floor", invisible: true },
       // upper cave interior ledge — top shelf inside the rocky arch
       { x: FOREST_LEFT, y: FOREST_FLOOR_Y - 200, width: 220, height: 20, type: "forest-step", invisible: true },
-      // pillar from bottom of upper ledge down to ground (canvas x=48–68, y=292→472)
+      // pillar from bottom of upper ledge down to ground (canvas x=48–268, y=292→472)
       { x: FOREST_LEFT, y: FOREST_FLOOR_Y - 180, width: 220, height: 180, type: "forest-step", invisible: true },
       // cave floor shelf — bottom of the cave arch, player lands here after dropping in
       { x: FOREST_LEFT, y: FOREST_FLOOR_Y - 15, width: 500, height: 30, type: "forest-step", invisible: true },
@@ -248,7 +248,6 @@ const forestRouteZones = [
       { x: 520, y: FOREST_FLOOR_Y, degrees: 28, width: 180, type: "forest-ramp", invisible: true },
       // left stone structure top (wide, 2 blue torches)
       { x: 688, y: FOREST_FLOOR_Y - 88, width: 300, height: 20, type: "forest-step", invisible: true },
-
     ],
     walls: [
       // pillar wall — blocks horizontal movement through the pillar
@@ -265,15 +264,15 @@ const forestRouteZones = [
         spawnX: FOREST_RIGHT - 120,
         spawnY: FOREST_FLOOR_Y - PLAYER_HEIGHT
       },
-      // right edge → forward to zone 2 (dark temple)
+      // right edge → forward to zone 2 (dark temple), spawn on nr1 Temple Lower Balcony
       {
         x: FOREST_RIGHT - 24,
         y: FOREST_FLOOR_Y - 400,
         width: 24,
         height: 400,
         targetZone: 2,
-        spawnX: FOREST_LEFT + 52,
-        spawnY: FOREST_FLOOR_Y - PLAYER_HEIGHT
+        spawnX: 80,
+        spawnY: FOREST_FLOOR_Y - 70 - PLAYER_HEIGHT
       }
     ]
   },
@@ -299,20 +298,48 @@ const forestRouteZones = [
     },
     floorY: FOREST_FLOOR_Y,
     platforms: [
-      { x: FOREST_LEFT - 32, y: FOREST_FLOOR_Y, width: FOREST_RIGHT - FOREST_LEFT + 64, height: 110, type: "forest-floor" },
-      // left column platform
-      { x: 78, y: FOREST_FLOOR_Y - 155, width: 162, height: 20, type: "forest-step" },
-      // left upper (above columns)
-      { x: 120, y: FOREST_FLOOR_Y - 265, width: 130, height: 20, type: "forest-step" },
-      // center arch top
-      { x: 372, y: FOREST_FLOOR_Y - 300, width: 216, height: 20, type: "forest-step" },
-      // right raised platform (stone wall)
-      { x: 648, y: FOREST_FLOOR_Y - 185, width: 182, height: 20, type: "forest-step" },
-      // far right high platform (obelisk base)
-      { x: 780, y: FOREST_FLOOR_Y - 290, width: 100, height: 20, type: "forest-step" }
+      { x: FOREST_LEFT - 32, y: FOREST_FLOOR_Y - 20, width: FOREST_RIGHT - FOREST_LEFT + 64, height: 140, type: "forest-floor", invisible: true },
+      // first Staircase Ramp — ascending slope from ground to temple entrance
+      { x: 120, y: FOREST_FLOOR_Y - 70, y2: FOREST_FLOOR_Y, degrees: -15, width: 140, type: "forest-ramp", invisible: true },
+      // nr1.Temple Lower Balcony — ledge at the base of the left columns
+      { x: 0, y: FOREST_FLOOR_Y - 70, width: 120, height: 20, type: "forest-step", invisible: true },
+      // Temple Upper Balcony — ledge above the left arch columns
+      { x: 142, y: FOREST_FLOOR_Y - 265, width: 436, height: 20, type: "forest-step", invisible: true },
+      // Overgrown Wall — raised stone wall on the right side
+      { x: 648, y: FOREST_FLOOR_Y - 115, width: 135, height: 200, type: "forest-step", invisible: true },
+      // Wall Ascent Ramp — slope up to Torch Pillar Peak
+      { x: 730, y: FOREST_FLOOR_Y - 115, y2: FOREST_FLOOR_Y - 130, degrees: -40, width: 90, type: "forest-ramp", invisible: true },
+      // Torch Pillar Peak — top of the far-right obelisk
+      { x: 820, y: FOREST_FLOOR_Y - 130, width: 150, height: 30, type: "forest-step", invisible: true }
     ],
-    walls: [],
-    transitions: []
+    walls: [
+      // Overgrown Wall — solid block
+      { x: 648, y: FOREST_FLOOR_Y - 115, width: 155, height: 200, invisible: true },
+      // Torch Pillar Peak — wall underneath
+      { x: 820, y: FOREST_FLOOR_Y - 130, width: 150, height: 160, invisible: true },
+    ],
+    transitions: [
+      // left edge → back to zone 1 (crimson cavern), spawn on last platform (stone structure top)
+      {
+        x: FOREST_LEFT,
+        y: 0,
+        width: 24,
+        height: FOREST_FLOOR_Y,
+        targetZone: 1,
+        spawnX: 800,
+        spawnY: FOREST_FLOOR_Y - 88 - PLAYER_HEIGHT
+      },
+      // right edge → forward to zone 3 (ruined citadel), spawn on first platform
+      {
+        x: FOREST_RIGHT - 24,
+        y: 0,
+        width: 24,
+        height: FOREST_FLOOR_Y,
+        targetZone: 3,
+        spawnX: 80,
+        spawnY: FOREST_FLOOR_Y - 99 - PLAYER_HEIGHT
+      }
+    ]
   },
   {
     id: "ruined-citadel",
@@ -336,24 +363,22 @@ const forestRouteZones = [
     },
     floorY: FOREST_FLOOR_Y,
     platforms: [
-      { x: FOREST_LEFT - 32, y: FOREST_FLOOR_Y, width: FOREST_RIGHT - FOREST_LEFT + 64, height: 110, type: "forest-floor" },
-      // far-left low terrace
-      { x: 56, y: FOREST_FLOOR_Y - 88, width: 128, height: 20, type: "forest-step" },
-      // left mid terrace
-      { x: 82, y: FOREST_FLOOR_Y - 190, width: 168, height: 20, type: "forest-step" },
-      // center lower path
-      { x: 320, y: FOREST_FLOOR_Y - 160, width: 210, height: 20, type: "forest-step" },
-      // center upper (obelisk plaza)
-      { x: 356, y: FOREST_FLOOR_Y - 280, width: 190, height: 20, type: "forest-step" },
-      // right low terrace
-      { x: 660, y: FOREST_FLOOR_Y - 110, width: 172, height: 20, type: "forest-step" },
-      // right mid terrace
-      { x: 694, y: FOREST_FLOOR_Y - 230, width: 138, height: 20, type: "forest-step" },
-      // top tier (summit)
-      { x: 210, y: FOREST_FLOOR_Y - 350, width: 170, height: 20, type: "forest-step" }
+      // Ground floor
+      { x: FOREST_LEFT - 32, y: FOREST_FLOOR_Y - 99, width: FOREST_RIGHT - FOREST_LEFT + 64, height: 450, type: "forest-floor", invisible: true },
     ],
     walls: [],
-    transitions: []
+    transitions: [
+      // left edge → back to zone 2 (dark temple), spawn on Torch Pillar Peak
+      {
+        x: FOREST_LEFT,
+        y: 0,
+        width: 24,
+        height: FOREST_FLOOR_Y,
+        targetZone: 2,
+        spawnX: 840,
+        spawnY: FOREST_FLOOR_Y - 130 - PLAYER_HEIGHT
+      }
+    ]
   }
 ];
 
@@ -508,7 +533,7 @@ const assets = {
       bg: createExactAsset("assets/textures/UFACsd.jpg")
     },
     ruinedCitadel: {
-      bg: createExactAsset("assets/textures/xSUk05.jpg")
+      bg: createExactAsset("assets/textures/first levels/bossleadup.png")
     },
   },
   boss: {
@@ -1157,7 +1182,8 @@ function getForestZone() {
 }
 
 function isBonfireZone() {
-  return getForestRouteIndex() === 0;
+  const idx = getForestRouteIndex();
+  return idx === 0 || idx === 3;
 }
 
 function getForestZonePalette() {
@@ -1218,6 +1244,16 @@ function getForestFloorY() {
 function setForestRoute(index) {
   forestRouteIndex = clamp(index, 0, forestRouteZones.length - 1);
   forestBonfire.floorY = getForestFloorY();
+  // Update bonfire position per zone
+  if (forestRouteIndex === 0) {
+    forestBonfire.x = FOREST_BONFIRE_X;
+    forestBonfire.floorY = FOREST_FLOOR_Y;
+  } else if (forestRouteIndex === 3) {
+    forestBonfire.x = 480;
+    forestBonfire.floorY = FOREST_FLOOR_Y - 99;
+  }
+  forestBonfire.playerNearby = false;
+  forestBonfire.healFlashTime = 0;
 }
 
 function isBossApproachVisible() {
@@ -2270,18 +2306,26 @@ function resolvePlatforms(previousBottom) {
   for (const platform of getScenePlatforms()) {
     if (platform.type === "forest-ramp") {
       const withinX = feetRight > platform.x && feetLeft < platform.x + platform.width;
-      if (!withinX || player.vy < 0) continue;
+      if (!withinX) continue;
       const rampY2 = platform.y2 !== undefined
         ? platform.y2
         : platform.y - platform.width * Math.tan((platform.degrees || 0) * Math.PI / 180);
       const centerX = clamp((feetLeft + feetRight) / 2, platform.x, platform.x + platform.width);
       const t = (centerX - platform.x) / platform.width;
       const surfaceY = platform.y + t * (rampY2 - platform.y);
-      if (previousBottom <= surfaceY + 8 && player.y + player.height >= surfaceY) {
+      // Landing on top of ramp (snap tolerance of 12px so walking from adjacent platforms works)
+      if (player.vy >= 0 && previousBottom <= surfaceY + 12 && player.y + player.height >= surfaceY - 12) {
         player.y = surfaceY - player.height;
         player.vy = 0;
         player.grounded = true;
         return platform;
+      }
+      // Hitting ramp from below — push player down
+      const rampThickness = 12;
+      const rampBottom = surfaceY + rampThickness;
+      if (player.vy < 0 && player.y <= rampBottom && player.y + player.height > rampBottom) {
+        player.y = rampBottom;
+        player.vy = 0;
       }
       continue;
     }
@@ -2367,6 +2411,50 @@ function resolveWalls(previousX) {
       player.x += overlapRight;
       if (player.vx < 0) {
         player.vx = 0;
+      }
+    }
+  }
+
+  // Ramp horizontal collision — block walking through ramps
+  for (const platform of getScenePlatforms()) {
+    if (platform.type !== "forest-ramp") continue;
+    const rampY2 = platform.y2 !== undefined
+      ? platform.y2
+      : platform.y - platform.width * Math.tan((platform.degrees || 0) * Math.PI / 180);
+    const rampTop = Math.min(platform.y, rampY2);
+    const rampBottom = Math.max(platform.y, rampY2) + 12;
+    const overlapsY = playerBottom > rampTop && playerTop < rampBottom;
+    if (!overlapsY) continue;
+
+    // Get surface Y at player's position
+    const centerX = clamp((player.x + player.width / 2), platform.x, platform.x + platform.width);
+    const t = (centerX - platform.x) / platform.width;
+    const surfaceY = platform.y + t * (rampY2 - platform.y);
+
+    // If player feet are below the ramp surface, block horizontal movement
+    if (player.y + player.height > surfaceY && player.y < surfaceY + 12) {
+      continue; // Player is on the ramp surface, don't block
+    }
+    if (player.y + player.height > surfaceY + 12) {
+      // Player is below the ramp — block from sides
+      const crossedFromLeft = previousRight <= platform.x && currentRight > platform.x;
+      const crossedFromRight = previousX >= platform.x + platform.width && player.x < platform.x + platform.width;
+      if (crossedFromLeft) {
+        player.x = platform.x - player.width;
+        if (player.vx > 0) player.vx = 0;
+      } else if (crossedFromRight) {
+        player.x = platform.x + platform.width;
+        if (player.vx < 0) player.vx = 0;
+      } else if (currentRight > platform.x && player.x < platform.x + platform.width) {
+        const overlapLeft = currentRight - platform.x;
+        const overlapRight = platform.x + platform.width - player.x;
+        if (overlapLeft < overlapRight) {
+          player.x -= overlapLeft;
+          if (player.vx > 0) player.vx = 0;
+        } else {
+          player.x += overlapRight;
+          if (player.vx < 0) player.vx = 0;
+        }
       }
     }
   }
