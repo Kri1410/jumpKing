@@ -3,3 +3,4 @@ desktop.ini
 .DS_Store
 server.stdout.log
 server.stderr.log
+debug.log

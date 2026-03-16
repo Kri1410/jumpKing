@@ -8,6 +8,12 @@ const pauseMenu = document.getElementById("pause-menu");
 const resumeButton = document.getElementById("resume-button");
 const restartButton = document.getElementById("restart-button");
 const fullscreenButton = document.getElementById("fullscreen-button");
+const fullscreenBtn = document.getElementById("fullscreen-btn");
+const fsMenu = document.getElementById("fs-menu");
+const fsResumeBtn = document.getElementById("fs-resume-btn");
+const fsRestartBtn = document.getElementById("fs-restart-btn");
+const fsExitFsBtn = document.getElementById("fs-exit-fs-btn");
+let fsMenuOpen = false;
 
 context.imageSmoothingEnabled = false;
 
@@ -97,6 +103,15 @@ const PLAYER_SPECIAL_HIT_START = 0.3;
 const PLAYER_SPECIAL_HIT_END = 0.72;
 const PLAYER_SPECIAL_PROJECTILE_SPEED = 760;
 const PLAYER_SPECIAL_PROJECTILE_LIFETIME = 0.74;
+
+// Lightning Stab (R key ability — hold to channel)
+const LIGHTNING_STAB_DAMAGE = 18;
+const LIGHTNING_STAB_DAMAGE_TICK = 0.18;
+const LIGHTNING_STAB_DURATION = 0.25;
+const LIGHTNING_STAB_COOLDOWN = 1.4;
+const LIGHTNING_STAB_BOLT_DELAY = 0.15;
+const LIGHTNING_STAB_BOLT_FADE = 0.35;
+const LIGHTNING_STAB_RANGE = 220;
 const PLAYER_JUMP_ATTACK_DAMAGE = 36;
 const PLAYER_JUMP_ATTACK_RANGE = 156;
 const PLAYER_JUMP_ATTACK_VERTICAL_RANGE = 220;
@@ -104,9 +119,9 @@ const PLAYER_JUMP_ATTACK_DURATION = 0.62;
 const PLAYER_JUMP_ATTACK_COOLDOWN = 1.08;
 const PLAYER_JUMP_ATTACK_HIT_START = 0.14;
 const PLAYER_JUMP_ATTACK_HIT_END = 0.62;
-const PLAYER_DASH_SPEED = 700;
-const PLAYER_DASH_DURATION = 0.34;
-const PLAYER_DASH_COOLDOWN = 0.62;
+const PLAYER_DASH_SPEED = 1100;
+const PLAYER_DASH_DURATION = 0.22;
+const PLAYER_DASH_COOLDOWN = 0.52;
 const PLAYER_DASH_DAMAGE = 12;
 const BOSS_BASE_SPEED = 98;
 const BOSS_LUNGE_SPEED = 220;
@@ -117,6 +132,148 @@ const BOSS_ATTACK_COOLDOWN = 0.95;
 const HURT_DURATION = 0.28;
 const PLAYER_IFRAME_DURATION = 0.55;
 const BOSS_IFRAME_DURATION = 0.3;
+
+// ── Nightborne Boss (Zone 4) ──
+const NB_FLOOR_Y = FOREST_FLOOR_Y - 99;
+const NB_SPAWN_X = 700;
+const NB_MIN_X = FOREST_LEFT + 60;
+const NB_MAX_X = FOREST_RIGHT - 60;
+const NB_MAX_HEALTH = 200;
+const NB_ATTACK_DAMAGE = 22;
+const NB_ATTACK_RANGE = 120;
+const NB_BASE_SPEED = 110;
+const NB_LUNGE_SPEED = 250;
+const NB_PERSONAL_SPACE = 100;
+const NB_PURSUIT_DISTANCE = 220;
+const NB_ATTACK_DURATION = 0.8;
+const NB_ATTACK_COOLDOWN = 0.85;
+const NB_IFRAME_DURATION = 0.3;
+// Sprite sheet: 1840x400, 5 rows of 80px, each frame 80x80
+const NB_FRAME_SIZE = 80;
+const NB_DRAW_SIZE = 160; // draw size on screen
+const NB_ROWS = { idle: 0, run: 1, attack: 2, hurt: 3, dead: 4 };
+const NB_FRAME_COUNTS = { idle: 9, run: 6, attack: 12, hurt: 5, dead: 23 };
+
+// ── Zone Mobs (zones 1-3) ──
+const MOB_FRAME_SIZE = 150;
+const MOB_TYPES = {
+  mushroom: {
+    health: 35, damage: 10, speed: 40, chaseSpeed: 70,
+    attackRange: 50, chaseRange: 220, attackDuration: 0.65, attackCooldown: 1.6,
+    iframeDuration: 0.25, drawSize: 140, hitW: 28, hitH: 40, footRatio: 0.70,
+    anims: {
+      idle:   { key: "mushroomIdle",   frames: 4, fps: 5 },
+      run:    { key: "mushroomRun",    frames: 8, fps: 8 },
+      attack: { key: "mushroomAttack", frames: 8, fps: 12 },
+      hurt:   { key: "mushroomHurt",   frames: 4, fps: 10 },
+      dead:   { key: "mushroomDead",   frames: 4, fps: 6 }
+    },
+    healthBarColor: "#6b8e23"
+  },
+  skeleton: {
+    health: 50, damage: 14, speed: 35, chaseSpeed: 60,
+    attackRange: 58, chaseRange: 240, attackDuration: 0.7, attackCooldown: 1.3,
+    iframeDuration: 0.25, drawSize: 150, hitW: 30, hitH: 44, footRatio: 0.73,
+    anims: {
+      idle:   { key: "skeletonIdle",   frames: 4, fps: 5 },
+      run:    { key: "skeletonWalk",   frames: 4, fps: 6 },
+      attack: { key: "skeletonAttack", frames: 8, fps: 12 },
+      hurt:   { key: "skeletonHurt",   frames: 4, fps: 10 },
+      dead:   { key: "skeletonDead",   frames: 4, fps: 6 }
+    },
+    healthBarColor: "#b0b0b0"
+  },
+  goblin: {
+    health: 40, damage: 12, speed: 55, chaseSpeed: 85,
+    attackRange: 48, chaseRange: 200, attackDuration: 0.6, attackCooldown: 1.1,
+    iframeDuration: 0.25, drawSize: 140, hitW: 26, hitH: 38, footRatio: 0.73,
+    anims: {
+      idle:   { key: "goblinIdle",   frames: 4, fps: 5 },
+      run:    { key: "goblinRun",    frames: 8, fps: 10 },
+      attack: { key: "goblinAttack", frames: 8, fps: 13 },
+      hurt:   { key: "goblinHurt",   frames: 4, fps: 10 },
+      dead:   { key: "goblinDead",   frames: 4, fps: 6 }
+    },
+    healthBarColor: "#4a8f3f"
+  },
+  flyingEye: {
+    health: 25, damage: 8, speed: 50, chaseSpeed: 90,
+    attackRange: 44, chaseRange: 250, attackDuration: 0.6, attackCooldown: 1.4,
+    iframeDuration: 0.2, drawSize: 120, hitW: 24, hitH: 24, flying: true, footRatio: 0.55,
+    anims: {
+      idle:   { key: "eyeFlight",  frames: 8, fps: 7 },
+      run:    { key: "eyeFlight",  frames: 8, fps: 10 },
+      attack: { key: "eyeAttack", frames: 8, fps: 12 },
+      hurt:   { key: "eyeHurt",   frames: 4, fps: 10 },
+      dead:   { key: "eyeDead",   frames: 4, fps: 6 }
+    },
+    healthBarColor: "#c44"
+  }
+};
+
+// Per-zone mob spawns (forest zone index → array of spawn defs)
+const ZONE_MOB_SPAWNS = {
+  // Zone 1 — Crimson Cavern
+  1: [
+    // Mushroom on stone structure top (platform y=FOREST_FLOOR_Y-88, x=688–988)
+    { type: "mushroom", x: 780, floorY: FOREST_FLOOR_Y - 88, patrolMin: 700, patrolMax: 960 },
+    // Skeleton on cave floor shelf (platform y=FOREST_FLOOR_Y-15, x=48–548)
+    { type: "skeleton", x: 350, floorY: FOREST_FLOOR_Y - 15, patrolMin: 270, patrolMax: 520 },
+  ],
+  // Zone 2 — Dark Temple
+  2: [
+    // Goblin on upper balcony (platform y=FOREST_FLOOR_Y-265, x=142–578)
+    { type: "goblin",    x: 350, floorY: FOREST_FLOOR_Y - 265, patrolMin: 160, patrolMax: 560 },
+    // Flying eye above the main floor area
+    { type: "flyingEye", x: 480, floorY: FOREST_FLOOR_Y - 180, patrolMin: 150, patrolMax: 620 },
+    // Skeleton on main ground floor (platform y=FOREST_FLOOR_Y-20, full width)
+    { type: "skeleton",  x: 450, floorY: FOREST_FLOOR_Y - 20,  patrolMin: 280, patrolMax: 630 },
+  ],
+  // Zone 3 — Ruined Citadel (single ground platform y=FOREST_FLOOR_Y-99)
+  3: [
+    { type: "skeleton", x: 250, floorY: FOREST_FLOOR_Y - 99, patrolMin: 100, patrolMax: 420 },
+    { type: "goblin",   x: 550, floorY: FOREST_FLOOR_Y - 99, patrolMin: 400, patrolMax: 700 },
+    { type: "skeleton", x: 780, floorY: FOREST_FLOOR_Y - 99, patrolMin: 660, patrolMax: 870 },
+  ],
+  // Zone 5 — Shattered Spire (ascending platforms)
+  5: [
+    // Skeleton guards the central arch platform
+    { type: "skeleton", x: 400, floorY: FOREST_FLOOR_Y - 170, patrolMin: 320, patrolMax: 500 },
+    // Flying eye patrols the upper air space
+    { type: "flyingEye", x: 500, floorY: FOREST_FLOOR_Y - 260, patrolMin: 200, patrolMax: 700 },
+    // Mushroom on ground floor right side
+    { type: "mushroom", x: 700, floorY: FOREST_FLOOR_Y, patrolMin: 550, patrolMax: 880 },
+  ],
+  // Zone 6 — Windswept Heights (two paths, more enemies)
+  6: [
+    // Goblin on main path ledge 2
+    { type: "goblin", x: 300, floorY: FOREST_FLOOR_Y - 140, patrolMin: 280, patrolMax: 400 },
+    // Skeleton guarding main path high ledge
+    { type: "skeleton", x: 400, floorY: FOREST_FLOOR_Y - 290, patrolMin: 380, patrolMax: 520 },
+    // Flying eye between the two paths
+    { type: "flyingEye", x: 480, floorY: FOREST_FLOOR_Y - 200, patrolMin: 300, patrolMax: 650 },
+    // Goblin on optional right path step 2
+    { type: "goblin", x: 560, floorY: FOREST_FLOOR_Y - 160, patrolMin: 530, patrolMax: 640 },
+    // Skeleton on optional right path step 3
+    { type: "skeleton", x: 740, floorY: FOREST_FLOOR_Y - 240, patrolMin: 720, patrolMax: 820 },
+  ],
+  // Zone 7 — The Pinnacle (dense gauntlet)
+  7: [
+    // Skeleton on step 3 (right wall ledge)
+    { type: "skeleton", x: 820, floorY: FOREST_FLOOR_Y - 160, patrolMin: 780, patrolMax: 920 },
+    // Goblin on step 4 (center)
+    { type: "goblin", x: 520, floorY: FOREST_FLOOR_Y - 210, patrolMin: 480, patrolMax: 610 },
+    // Flying eye in upper zone
+    { type: "flyingEye", x: 350, floorY: FOREST_FLOOR_Y - 300, patrolMin: 200, patrolMax: 600 },
+    // Skeleton on step 6 (center high)
+    { type: "skeleton", x: 450, floorY: FOREST_FLOOR_Y - 320, patrolMin: 400, patrolMax: 540 },
+    // Flying eye near the peak
+    { type: "flyingEye", x: 550, floorY: FOREST_FLOOR_Y - 400, patrolMin: 350, patrolMax: 700 },
+    // Goblin on ground right island
+    { type: "goblin", x: 720, floorY: FOREST_FLOOR_Y, patrolMin: 620, patrolMax: 900 },
+  ]
+};
+
 const CAMERA_LOOKAHEAD_UP = -84;
 const CAMERA_LOOKAHEAD_DOWN = 66;
 const CAMERA_LOOKAHEAD_LERP = 420;
@@ -177,7 +334,7 @@ const forestRouteZones = [
     id: "forest-edge",
     title: "Forest Edge",
     subtitle: "Bonfire clearing",
-    theme: "art-forest",
+    theme: "first-cp",
     decorations: [
     ],
     palette: {
@@ -200,6 +357,9 @@ const forestRouteZones = [
       { x: 166,              y: FOREST_FLOOR_Y - 86,  width: 136, height: 18, type: "forest-step" },  // ZONE0 left-step   (canvas y=386, x=166–302)
       { x: 372,              y: FOREST_FLOOR_Y - 138, width: 146, height: 18, type: "forest-step" },  // ZONE0 center-step (canvas y=334, x=372–518)
       { x: 610,              y: FOREST_FLOOR_Y - 92,  width: 124, height: 18, type: "forest-step" }   // ZONE0 right-step  (canvas y=380, x=610–734)
+    ],
+    platforms: [
+      { x: FOREST_LEFT - 32, y: FOREST_FLOOR_Y, width: FOREST_RIGHT - FOREST_LEFT + 64, height: 110, type: "forest-floor", invisible: true }
     ],
     walls: [],
     transitions: [
@@ -377,6 +537,272 @@ const forestRouteZones = [
         targetZone: 2,
         spawnX: 840,
         spawnY: FOREST_FLOOR_Y - 130 - PLAYER_HEIGHT
+      },
+      // right edge → forward to zone 4 (boss room)
+      {
+        x: FOREST_RIGHT - 24,
+        y: 0,
+        width: 24,
+        height: FOREST_FLOOR_Y,
+        targetZone: 4,
+        spawnX: 80,
+        spawnY: FOREST_FLOOR_Y - 99 - PLAYER_HEIGHT
+      }
+    ]
+  },
+  // ── Zone 4: Boss Room ──
+  {
+    id: "boss-room",
+    title: "Boss Room",
+    subtitle: "The final stand",
+    theme: "boss-room",
+    decorations: [],
+    palette: {
+      sky: ["#0a0608", "#140c10", "#0a0608"],
+      haze: "rgba(60, 20, 40, 0.1)",
+      ridgeFar: "#160d10",
+      ridgeNear: "#0e080b",
+      floorBase: "#18130e",
+      floorTop: "#3a2a1a",
+      stepBase: "#1e1810",
+      stepTop: "#4a3820",
+      pathBase: "#18130e",
+      pathTop: "#3a2a1a",
+      wallBase: "#18130e",
+      wallEdge: "#4a3820"
+    },
+    floorY: FOREST_FLOOR_Y,
+    platforms: [
+      // Ground floor
+      { x: FOREST_LEFT - 32, y: FOREST_FLOOR_Y - 99, width: FOREST_RIGHT - FOREST_LEFT + 64, height: 450, type: "forest-floor", invisible: true },
+    ],
+    walls: [
+      // Right wall — block exit until Nightborne dead
+      { x: FOREST_RIGHT, y: 0, width: 32, height: FOREST_FLOOR_Y, invisible: true },
+    ],
+    transitions: [
+      // left edge → back to zone 3 (only after Nightborne is defeated)
+      {
+        x: FOREST_LEFT,
+        y: 0,
+        width: 24,
+        height: FOREST_FLOOR_Y,
+        targetZone: 3,
+        spawnX: 840,
+        spawnY: FOREST_FLOOR_Y - 99 - PLAYER_HEIGHT,
+        requireNightborneDead: true
+      },
+      // right edge → forward to zone 5 (only after Nightborne is defeated)
+      {
+        x: FOREST_RIGHT - 24,
+        y: FOREST_FLOOR_Y - 400,
+        width: 24,
+        height: 400,
+        targetZone: 5,
+        spawnX: FOREST_LEFT + 60,
+        spawnY: FOREST_FLOOR_Y - PLAYER_HEIGHT,
+        requireNightborneDead: true
+      }
+    ]
+  },
+  // ── Zone 5: Shattered Spire — the ascent begins ──
+  {
+    id: "shattered-spire",
+    title: "Shattered Spire",
+    subtitle: "Where the sky breaks through",
+    theme: "shattered-spire",
+    decorations: [],
+    palette: {
+      sky: ["#0c1020", "#1a2040", "#0e1428"],
+      haze: "rgba(100, 140, 200, 0.08)",
+      ridgeFar: "#141a2e",
+      ridgeNear: "#0e1220",
+      floorBase: "#1a1c28",
+      floorTop: "#2e3450",
+      stepBase: "#222840",
+      stepTop: "#4a5478",
+      pathBase: "#1a1c28",
+      pathTop: "#2e3450",
+      wallBase: "#1a1c28",
+      wallEdge: "#4a5478"
+    },
+    floorY: FOREST_FLOOR_Y,
+    platforms: [
+      // Ground floor — rubble-strewn base
+      { x: FOREST_LEFT - 32, y: FOREST_FLOOR_Y, width: FOREST_RIGHT - FOREST_LEFT + 64, height: 110, type: "forest-floor" },
+      // Low rubble step — first jump
+      { x: 160, y: FOREST_FLOOR_Y - 60, width: 140, height: 20, type: "forest-step" },
+      // Broken pillar ledge — left side ascending
+      { x: 60, y: FOREST_FLOOR_Y - 140, width: 120, height: 18, type: "forest-step" },
+      // Central crumbling arch — main route up
+      { x: 320, y: FOREST_FLOOR_Y - 170, width: 180, height: 18, type: "forest-step" },
+      // Right wall fragment — optional path
+      { x: 680, y: FOREST_FLOOR_Y - 110, width: 130, height: 18, type: "forest-step" },
+      // High right ledge — connects to central
+      { x: 600, y: FOREST_FLOOR_Y - 230, width: 150, height: 18, type: "forest-step" },
+      // Upper left spire fragment — near the top
+      { x: 140, y: FOREST_FLOOR_Y - 280, width: 160, height: 18, type: "forest-step" },
+      // Summit ledge — exit platform
+      { x: 440, y: FOREST_FLOOR_Y - 340, width: 200, height: 18, type: "forest-step" },
+      // Ramp ascending from ground right side
+      { x: 520, y: FOREST_FLOOR_Y, degrees: 30, width: 160, type: "forest-ramp" },
+    ],
+    walls: [
+      // Broken pillar wall underneath left ledge
+      { x: 60, y: FOREST_FLOOR_Y - 140, width: 120, height: 140 },
+    ],
+    transitions: [
+      // left edge → back to zone 4 (boss room)
+      {
+        x: FOREST_LEFT,
+        y: 0,
+        width: 24,
+        height: FOREST_FLOOR_Y,
+        targetZone: 4,
+        spawnX: FOREST_RIGHT - 120,
+        spawnY: FOREST_FLOOR_Y - 99 - PLAYER_HEIGHT
+      },
+      // right edge → forward to zone 6
+      {
+        x: FOREST_RIGHT - 24,
+        y: FOREST_FLOOR_Y - 400,
+        width: 24,
+        height: 400,
+        targetZone: 6,
+        spawnX: FOREST_LEFT + 60,
+        spawnY: FOREST_FLOOR_Y - PLAYER_HEIGHT
+      }
+    ]
+  },
+  // ── Zone 6: Windswept Heights — branching paths, verticality ──
+  {
+    id: "windswept-heights",
+    title: "Windswept Heights",
+    subtitle: "The wind howls between the stones",
+    theme: "windswept-heights",
+    decorations: [],
+    palette: {
+      sky: ["#0a1218", "#162838", "#0c1a24"],
+      haze: "rgba(140, 180, 220, 0.1)",
+      ridgeFar: "#12202c",
+      ridgeNear: "#0a1620",
+      floorBase: "#1c2430",
+      floorTop: "#344868",
+      stepBase: "#243040",
+      stepTop: "#506888",
+      pathBase: "#1c2430",
+      pathTop: "#344868",
+      wallBase: "#1c2430",
+      wallEdge: "#506888"
+    },
+    floorY: FOREST_FLOOR_Y,
+    platforms: [
+      // Ground — narrow broken floor, gaps force climbing
+      { x: FOREST_LEFT - 32, y: FOREST_FLOOR_Y, width: 250, height: 110, type: "forest-floor" },
+      // Right ground island — separated by gap
+      { x: 620, y: FOREST_FLOOR_Y, width: 340, height: 110, type: "forest-floor" },
+      // ── MAIN PATH (left side ascending) ──
+      // Ledge 1 — start of the climb
+      { x: 80, y: FOREST_FLOOR_Y - 80, width: 130, height: 18, type: "forest-step" },
+      // Ledge 2 — hop across
+      { x: 280, y: FOREST_FLOOR_Y - 140, width: 120, height: 18, type: "forest-step" },
+      // Ledge 3 — central platform
+      { x: 160, y: FOREST_FLOOR_Y - 220, width: 150, height: 18, type: "forest-step" },
+      // Ledge 4 — high left
+      { x: 380, y: FOREST_FLOOR_Y - 290, width: 140, height: 18, type: "forest-step" },
+      // ── OPTIONAL UPPER PATH (right side — harder, more enemies) ──
+      // Right ascent step 1
+      { x: 680, y: FOREST_FLOOR_Y - 90, width: 120, height: 18, type: "forest-step" },
+      // Right ascent step 2
+      { x: 530, y: FOREST_FLOOR_Y - 160, width: 110, height: 18, type: "forest-step" },
+      // Right ascent step 3 — narrow and exposed
+      { x: 720, y: FOREST_FLOOR_Y - 240, width: 100, height: 18, type: "forest-step" },
+      // Right ascent step 4 — connects to main path near top
+      { x: 580, y: FOREST_FLOOR_Y - 310, width: 120, height: 18, type: "forest-step" },
+      // ── TOP — both paths converge ──
+      // Summit bridge — exit to zone 7
+      { x: 350, y: FOREST_FLOOR_Y - 370, width: 260, height: 18, type: "forest-step" },
+    ],
+    walls: [],
+    transitions: [
+      // left edge → back to zone 5
+      {
+        x: FOREST_LEFT,
+        y: 0,
+        width: 24,
+        height: FOREST_FLOOR_Y,
+        targetZone: 5,
+        spawnX: FOREST_RIGHT - 120,
+        spawnY: FOREST_FLOOR_Y - PLAYER_HEIGHT
+      },
+      // right edge → forward to zone 7
+      {
+        x: FOREST_RIGHT - 24,
+        y: FOREST_FLOOR_Y - 400,
+        width: 24,
+        height: 400,
+        targetZone: 7,
+        spawnX: FOREST_LEFT + 60,
+        spawnY: FOREST_FLOOR_Y - PLAYER_HEIGHT
+      }
+    ]
+  },
+  // ── Zone 7: The Pinnacle — final ascent gauntlet ──
+  {
+    id: "the-pinnacle",
+    title: "The Pinnacle",
+    subtitle: "Above the clouds, the end awaits",
+    theme: "the-pinnacle",
+    decorations: [],
+    palette: {
+      sky: ["#08081a", "#141430", "#0a0a20"],
+      haze: "rgba(180, 160, 220, 0.12)",
+      ridgeFar: "#141428",
+      ridgeNear: "#0c0c1e",
+      floorBase: "#1a1428",
+      floorTop: "#322848",
+      stepBase: "#221a38",
+      stepTop: "#584880",
+      pathBase: "#1a1428",
+      pathTop: "#322848",
+      wallBase: "#1a1428",
+      wallEdge: "#584880"
+    },
+    floorY: FOREST_FLOOR_Y,
+    platforms: [
+      // Narrow ground — barely any safe floor
+      { x: FOREST_LEFT - 32, y: FOREST_FLOOR_Y, width: 200, height: 110, type: "forest-floor" },
+      // ── Ascending gauntlet — zig-zag climb ──
+      // Step 1 — right
+      { x: 300, y: FOREST_FLOOR_Y - 60, width: 110, height: 18, type: "forest-step" },
+      // Step 2 — far right
+      { x: 580, y: FOREST_FLOOR_Y - 100, width: 120, height: 18, type: "forest-step" },
+      // Step 3 — right wall ledge
+      { x: 780, y: FOREST_FLOOR_Y - 160, width: 140, height: 18, type: "forest-step" },
+      // Step 4 — back to center
+      { x: 480, y: FOREST_FLOOR_Y - 210, width: 130, height: 18, type: "forest-step" },
+      // Step 5 — left side
+      { x: 200, y: FOREST_FLOOR_Y - 260, width: 120, height: 18, type: "forest-step" },
+      // Step 6 — center high
+      { x: 400, y: FOREST_FLOOR_Y - 320, width: 140, height: 18, type: "forest-step" },
+      // Step 7 — right high
+      { x: 650, y: FOREST_FLOOR_Y - 370, width: 110, height: 18, type: "forest-step" },
+      // ── The Peak — final platform ──
+      { x: 340, y: FOREST_FLOOR_Y - 420, width: 280, height: 20, type: "forest-step" },
+      // Right ground island for enemies
+      { x: 600, y: FOREST_FLOOR_Y, width: 360, height: 110, type: "forest-floor" },
+    ],
+    walls: [],
+    transitions: [
+      // left edge → back to zone 6
+      {
+        x: FOREST_LEFT,
+        y: 0,
+        width: 24,
+        height: FOREST_FLOOR_Y,
+        targetZone: 6,
+        spawnX: FOREST_RIGHT - 120,
+        spawnY: FOREST_FLOOR_Y - PLAYER_HEIGHT
       }
     ]
   }
@@ -418,6 +844,21 @@ const boss = {
   dead: false
 };
 
+const nightborne = {
+  x: NB_SPAWN_X,
+  direction: -1,
+  state: "idle",
+  stateTime: 0,
+  maxHealth: NB_MAX_HEALTH,
+  health: NB_MAX_HEALTH,
+  attackCooldown: 0,
+  attackHitDone: false,
+  hurtTime: 0,
+  invulnerableTime: 0,
+  dead: false,
+  active: false
+};
+
 const stars = Array.from({ length: 44 }, (_, index) => ({
   x: (index * 149) % VIEW_WIDTH,
   y: 36 + ((index * 83) % 180),
@@ -450,6 +891,11 @@ const player = {
   specialTime: 0,
   specialCooldown: 0,
   specialHitDone: false,
+  lightningStabTime: 0,
+  lightningStabCooldown: 0,
+  lightningBoltSpawned: false,
+  lightningDamageTick: 0,
+  lightningChanneling: false,
   jumpAttackTime: 0,
   jumpAttackCooldown: 0,
   jumpAttackHitDone: false,
@@ -472,17 +918,36 @@ const input = {
   right: false,
   down: false,
   attackHeld: false,
-  jumpHeld: false
+  jumpHeld: false,
+  lightningHeld: false
 };
 
 const customCharacterAsset = createOptionalAssetPaths(
   ["assets/characters/custom/player", "assets/characters/player"],
   false
 );
+const destinyIdleAsset = createExactAsset("assets/characters/destiny/idle_strip.png");
+const destinyCharacter = {
+  id: "destiny",
+  label: "Destiny",
+  states: {
+    idle: destinyIdleAsset,
+    run: destinyIdleAsset,
+    jump: destinyIdleAsset,
+    attack: [destinyIdleAsset, destinyIdleAsset, destinyIdleAsset],
+    special: destinyIdleAsset,
+    jumpAttack: destinyIdleAsset,
+    dash: destinyIdleAsset,
+    block: destinyIdleAsset,
+    hurt: destinyIdleAsset,
+    dead: destinyIdleAsset
+  }
+};
 const characters = {
   fighter: createCharacterSet("fighter", "Fighter", "assets/characters/fighter"),
   samurai: createCharacterSet("samurai", "Samurai", "assets/characters/samurai"),
   shinobi: createCharacterSet("shinobi", "Shinobi", "assets/characters/shinobi"),
+  destiny: destinyCharacter,
   custom: {
     id: "custom",
     label: "Custom",
@@ -517,6 +982,9 @@ const assets = {
   ],
   teleporterDoor: createOptionalAssetPaths(["assets/textures/TP/door"], false),
   forestThemes: {
+    firstCp: {
+      bg: createExactAsset("assets/textures/first levels/firstcp.png")
+    },
     artForest: {
       depth: createExactAsset("assets/textures/Art Forest/Free Pixel Art Forest/PNG/Background layers/Layer_0010_1.png"),
       far: createExactAsset("assets/textures/Art Forest/Free Pixel Art Forest/PNG/Background layers/Layer_0009_2.png"),
@@ -533,8 +1001,35 @@ const assets = {
       bg: createExactAsset("assets/textures/UFACsd.jpg")
     },
     ruinedCitadel: {
-      bg: createExactAsset("assets/textures/first levels/bossleadup.png")
+      bg: createExactAsset("assets/textures/first levels/blead.png")
     },
+    bossRoom: {
+      bg: createExactAsset("assets/textures/first levels/bossroom.png")
+    },
+  },
+  nightborne: {
+    sheet: createExactAsset("assets/characters/Enemis/NightBorne/NightBorne.png")
+  },
+  mobs: {
+    mushroomIdle:   createExactAsset("assets/characters/Enemis/zone1-3/Monsters_Creatures_Fantasy/Monsters_Creatures_Fantasy/Mushroom/Idle.png"),
+    mushroomRun:    createExactAsset("assets/characters/Enemis/zone1-3/Monsters_Creatures_Fantasy/Monsters_Creatures_Fantasy/Mushroom/Run.png"),
+    mushroomAttack: createExactAsset("assets/characters/Enemis/zone1-3/Monsters_Creatures_Fantasy/Monsters_Creatures_Fantasy/Mushroom/Attack.png"),
+    mushroomHurt:   createExactAsset("assets/characters/Enemis/zone1-3/Monsters_Creatures_Fantasy/Monsters_Creatures_Fantasy/Mushroom/Take Hit.png"),
+    mushroomDead:   createExactAsset("assets/characters/Enemis/zone1-3/Monsters_Creatures_Fantasy/Monsters_Creatures_Fantasy/Mushroom/Death.png"),
+    skeletonIdle:   createExactAsset("assets/characters/Enemis/zone1-3/Monsters_Creatures_Fantasy/Monsters_Creatures_Fantasy/Skeleton/Idle.png"),
+    skeletonWalk:   createExactAsset("assets/characters/Enemis/zone1-3/Monsters_Creatures_Fantasy/Monsters_Creatures_Fantasy/Skeleton/Walk.png"),
+    skeletonAttack: createExactAsset("assets/characters/Enemis/zone1-3/Monsters_Creatures_Fantasy/Monsters_Creatures_Fantasy/Skeleton/Attack.png"),
+    skeletonHurt:   createExactAsset("assets/characters/Enemis/zone1-3/Monsters_Creatures_Fantasy/Monsters_Creatures_Fantasy/Skeleton/Take Hit.png"),
+    skeletonDead:   createExactAsset("assets/characters/Enemis/zone1-3/Monsters_Creatures_Fantasy/Monsters_Creatures_Fantasy/Skeleton/Death.png"),
+    goblinIdle:     createExactAsset("assets/characters/Enemis/zone1-3/Monsters_Creatures_Fantasy/Monsters_Creatures_Fantasy/Goblin/Idle.png"),
+    goblinRun:      createExactAsset("assets/characters/Enemis/zone1-3/Monsters_Creatures_Fantasy/Monsters_Creatures_Fantasy/Goblin/Run.png"),
+    goblinAttack:   createExactAsset("assets/characters/Enemis/zone1-3/Monsters_Creatures_Fantasy/Monsters_Creatures_Fantasy/Goblin/Attack.png"),
+    goblinHurt:     createExactAsset("assets/characters/Enemis/zone1-3/Monsters_Creatures_Fantasy/Monsters_Creatures_Fantasy/Goblin/Take Hit.png"),
+    goblinDead:     createExactAsset("assets/characters/Enemis/zone1-3/Monsters_Creatures_Fantasy/Monsters_Creatures_Fantasy/Goblin/Death.png"),
+    eyeFlight:      createExactAsset("assets/characters/Enemis/zone1-3/Monsters_Creatures_Fantasy/Monsters_Creatures_Fantasy/Flying eye/Flight.png"),
+    eyeAttack:      createExactAsset("assets/characters/Enemis/zone1-3/Monsters_Creatures_Fantasy/Monsters_Creatures_Fantasy/Flying eye/Attack.png"),
+    eyeHurt:        createExactAsset("assets/characters/Enemis/zone1-3/Monsters_Creatures_Fantasy/Monsters_Creatures_Fantasy/Flying eye/Take Hit.png"),
+    eyeDead:        createExactAsset("assets/characters/Enemis/zone1-3/Monsters_Creatures_Fantasy/Monsters_Creatures_Fantasy/Flying eye/Death.png"),
   },
   boss: {
     idle: createExactAsset("assets/characters/Enemis/enemy sprites/Gotoku/Idle.png"),
@@ -582,7 +1077,8 @@ const TELEPORTER_ANIMATIONS = {
 const encounter = {
   bossStarted: false,
   bossDefeated: false,
-  forestUnlocked: false
+  forestUnlocked: false,
+  nightborneDefeated: false
 };
 const teleportTransition = {
   active: false,
@@ -796,9 +1292,15 @@ function togglePauseMenu() {
 async function toggleFullscreenMode() {
   try {
     if (document.fullscreenElement) {
+      if (navigator.keyboard && navigator.keyboard.unlock) {
+        navigator.keyboard.unlock();
+      }
       await document.exitFullscreen();
     } else {
-      await document.documentElement.requestFullscreen();
+      await document.documentElement.requestFullscreen({ navigationUI: "hide" });
+      if (navigator.keyboard && navigator.keyboard.lock) {
+        await navigator.keyboard.lock(["Escape"]);
+      }
     }
   } catch {}
 
@@ -826,6 +1328,62 @@ function setupPauseMenu() {
   document.addEventListener("fullscreenchange", updateFullscreenButtonLabel);
   setPauseMenuOpen(false);
   updateFullscreenButtonLabel();
+}
+
+// ── Fullscreen menu (ESC dropdown in fullscreen) ──
+function setFsMenuOpen(open) {
+  fsMenuOpen = open;
+  if (fsMenu) {
+    fsMenu.hidden = !open;
+  }
+  if (open) {
+    clearInputState();
+    gameInputActive = false;
+  } else {
+    activateGameInput();
+  }
+}
+
+function setupFullscreenMenu() {
+  // Header fullscreen button
+  fullscreenBtn?.addEventListener("click", async () => {
+    try {
+      await document.documentElement.requestFullscreen({ navigationUI: "hide" });
+      if (navigator.keyboard && navigator.keyboard.lock) {
+        await navigator.keyboard.lock(["Escape"]);
+      }
+    } catch {}
+    setTimeout(() => canvas.focus(), 100);
+  });
+
+  // Resume button in fullscreen menu
+  fsResumeBtn?.addEventListener("click", () => {
+    setFsMenuOpen(false);
+  });
+
+  // Restart button in fullscreen menu
+  fsRestartBtn?.addEventListener("click", () => {
+    resetPlayer();
+    setFsMenuOpen(false);
+  });
+
+  // Exit fullscreen button in menu
+  fsExitFsBtn?.addEventListener("click", async () => {
+    setFsMenuOpen(false);
+    try {
+      if (navigator.keyboard && navigator.keyboard.unlock) {
+        navigator.keyboard.unlock();
+      }
+      await document.exitFullscreen();
+    } catch {}
+  });
+
+  // When exiting fullscreen, close the menu
+  document.addEventListener("fullscreenchange", () => {
+    if (!document.fullscreenElement && fsMenuOpen) {
+      setFsMenuOpen(false);
+    }
+  });
 }
 
 function getActiveCharacter() {
@@ -861,6 +1419,10 @@ function getPlayerSpriteState() {
     return "jumpAttack";
   }
 
+  if (isLightningStabActive()) {
+    return "lightningStab";
+  }
+
   if (isPlayerSpecialAttacking()) {
     return "special";
   }
@@ -893,7 +1455,9 @@ function getActiveCharacterAsset(state) {
   const requested =
     state === "attack"
       ? resolveAssetVariant(activeCharacter.states.attack, player.currentAttackIndex)
-      : activeCharacter.states[state] || activeCharacter.states.idle;
+      : state === "lightningStab"
+        ? resolveAssetVariant(activeCharacter.states.attack, 2)
+        : activeCharacter.states[state] || activeCharacter.states.idle;
 
   if (requested && requested.loaded) {
     return requested;
@@ -904,6 +1468,14 @@ function getActiveCharacterAsset(state) {
     if (firstAttackAsset && firstAttackAsset.loaded) {
       return firstAttackAsset;
     }
+  }
+
+  if (state === "lightningStab") {
+    // Always use Attack_3 (index 2) for lightning stab
+    const attack3 = resolveAssetVariant(activeCharacter.states.attack, 2);
+    if (attack3 && attack3.loaded) return attack3;
+    const fallback = resolveAssetVariant(activeCharacter.states.attack, 0);
+    if (fallback && fallback.loaded) return fallback;
   }
 
   if (state === "special") {
@@ -944,6 +1516,7 @@ function getFrameCount(asset) {
   if (!asset || !asset.loaded || asset.image.naturalHeight === 0) {
     return 1;
   }
+  if (asset._frameCount) return asset._frameCount;
 
   return Math.max(1, Math.round(asset.image.naturalWidth / asset.image.naturalHeight));
 }
@@ -1126,6 +1699,24 @@ function updateSpecialProjectiles(deltaTime) {
       projectile.age = projectile.lifetime;
     }
 
+    // Special projectile hits Nightborne
+    if (
+      !projectile.hitDone &&
+      isNightborneZone() &&
+      nightborne.active && !nightborne.dead &&
+      Math.abs(nightborne.x - projectile.x) <= PLAYER_SPECIAL_RANGE * 0.52
+    ) {
+      damageNightborne(PLAYER_SPECIAL_DAMAGE);
+      projectile.hitDone = true;
+      projectile.age = projectile.lifetime;
+    }
+
+    // Special projectile hits zone mobs
+    if (!projectile.hitDone && checkMobProjectileHit(projectile.x, PLAYER_SPECIAL_DAMAGE)) {
+      projectile.hitDone = true;
+      projectile.age = projectile.lifetime;
+    }
+
     if (projectile.age >= projectile.lifetime || projectile.x < -160 || projectile.x > WORLD_WIDTH + 160) {
       specialProjectiles.splice(index, 1);
     }
@@ -1211,6 +1802,20 @@ function getForestZonePalette() {
     };
   }
 
+  if (themeId === "first-cp") {
+    return {
+      ...FOREST_ZONE_DEFAULT_PALETTE,
+      floorBase: "#21392c",
+      floorTop: "#568264",
+      stepBase: "#2b4535",
+      stepTop: "#6ea17a",
+      pathBase: "#2f4132",
+      pathTop: "#628f70",
+      wallBase: "#253d2f",
+      wallEdge: "#6ea780"
+    };
+  }
+
   return FOREST_ZONE_DEFAULT_PALETTE;
 }
 
@@ -1250,10 +1855,18 @@ function setForestRoute(index) {
     forestBonfire.floorY = FOREST_FLOOR_Y;
   } else if (forestRouteIndex === 3) {
     forestBonfire.x = 480;
-    forestBonfire.floorY = FOREST_FLOOR_Y - 99;
+    forestBonfire.floorY = FOREST_FLOOR_Y - 85;
   }
   forestBonfire.playerNearby = false;
   forestBonfire.healFlashTime = 0;
+
+  // Reset Nightborne when entering zone 4
+  if (forestRouteIndex === 4) {
+    resetNightborne();
+  }
+
+  // Reset zone mobs
+  resetZoneMobs();
 }
 
 function isBossApproachVisible() {
@@ -1346,11 +1959,14 @@ function getSceneWalls() {
   }
 
   const zone = getForestZone();
-  if (Array.isArray(zone?.walls)) {
-    return zone.walls;
+  if (!Array.isArray(zone?.walls)) {
+    return [];
   }
-
-  return [];
+  // In boss room, remove right wall once Nightborne is dead so player can exit right
+  if (getForestRouteIndex() === 4 && nightborne.dead) {
+    return zone.walls.filter(w => w.x < FOREST_RIGHT);
+  }
+  return zone.walls;
 }
 
 function getSceneHorizontalBounds() {
@@ -1428,6 +2044,449 @@ function resetBoss() {
   boss.hurtTime = 0;
   boss.invulnerableTime = 0;
   boss.dead = false;
+}
+
+// ── Nightborne Boss ──
+function isNightborneZone() {
+  return isForestScene() && getForestRouteIndex() === 4;
+}
+
+function resetNightborne() {
+  nightborne.x = NB_SPAWN_X;
+  nightborne.direction = -1;
+  nightborne.state = "idle";
+  nightborne.stateTime = 0;
+  nightborne.health = nightborne.maxHealth;
+  nightborne.attackCooldown = 0;
+  nightborne.attackHitDone = false;
+  nightborne.hurtTime = 0;
+  nightborne.invulnerableTime = 0;
+  nightborne.dead = false;
+  nightborne.active = false;
+}
+
+function activateNightborne() {
+  if (!nightborne.active && !nightborne.dead) {
+    nightborne.active = true;
+    nightborne.state = "idle";
+    nightborne.stateTime = 0;
+  }
+}
+
+function damageNightborne(amount) {
+  if (nightborne.dead || nightborne.invulnerableTime > 0) return;
+
+  nightborne.health = clamp(nightborne.health - amount, 0, nightborne.maxHealth);
+  nightborne.invulnerableTime = NB_IFRAME_DURATION;
+  nightborne.hurtTime = HURT_DURATION;
+  nightborne.state = nightborne.health <= 0 ? "dead" : "hurt";
+  nightborne.stateTime = 0;
+  nightborne.attackHitDone = true;
+
+  if (nightborne.health <= 0) {
+    nightborne.dead = true;
+    encounter.nightborneDefeated = true;
+  }
+}
+
+function updateNightborne(deltaTime) {
+  if (!isNightborneZone() || player.dead || !nightborne.active) return;
+
+  if (nightborne.invulnerableTime > 0) {
+    nightborne.invulnerableTime = Math.max(0, nightborne.invulnerableTime - deltaTime);
+  }
+  if (nightborne.hurtTime > 0) {
+    nightborne.hurtTime = Math.max(0, nightborne.hurtTime - deltaTime);
+  }
+  if (nightborne.attackCooldown > 0) {
+    nightborne.attackCooldown = Math.max(0, nightborne.attackCooldown - deltaTime);
+  }
+
+  if (nightborne.dead) {
+    nightborne.state = "dead";
+    nightborne.stateTime += deltaTime;
+    return;
+  }
+
+  nightborne.stateTime += deltaTime;
+
+  if (nightborne.hurtTime > 0) {
+    nightborne.state = "hurt";
+    return;
+  }
+
+  const playerCenter = getPlayerCenterX();
+  const distanceToPlayer = playerCenter - nightborne.x;
+  const absDistance = Math.abs(distanceToPlayer);
+  const nearPlayer = absDistance < NB_ATTACK_RANGE && player.y < NB_FLOOR_Y + 40;
+
+  if (nightborne.state === "attack") {
+    if (nightborne.stateTime >= 0.18 && nightborne.stateTime <= 0.40) {
+      const dir = distanceToPlayer < 0 ? -1 : 1;
+      nightborne.direction = dir;
+      nightborne.x += dir * NB_LUNGE_SPEED * deltaTime;
+    }
+    if (!nightborne.attackHitDone && nightborne.stateTime >= 0.28 && nearPlayer) {
+      if (isPlayerDashing()) {
+        nightborne.attackHitDone = true;
+      } else {
+        damagePlayer(NB_ATTACK_DAMAGE);
+        nightborne.attackHitDone = true;
+      }
+    }
+    if (nightborne.stateTime > NB_ATTACK_DURATION) {
+      nightborne.state = "run";
+      nightborne.stateTime = 0;
+    }
+    return;
+  }
+
+  if (nearPlayer && nightborne.attackCooldown <= 0) {
+    nightborne.state = "attack";
+    nightborne.stateTime = 0;
+    nightborne.attackHitDone = false;
+    nightborne.attackCooldown = NB_ATTACK_COOLDOWN;
+    return;
+  }
+
+  nightborne.state = "run";
+  if (absDistance > NB_PERSONAL_SPACE) {
+    nightborne.direction = distanceToPlayer < 0 ? -1 : 1;
+  } else if (nightborne.attackCooldown > 0.2) {
+    nightborne.direction = distanceToPlayer < 0 ? 1 : -1;
+  }
+
+  const runSpeed =
+    absDistance > NB_PURSUIT_DISTANCE ? NB_BASE_SPEED * 1.2
+    : absDistance > NB_PERSONAL_SPACE ? NB_BASE_SPEED
+    : NB_BASE_SPEED * 0.6;
+  nightborne.x += nightborne.direction * runSpeed * deltaTime;
+  nightborne.x = clamp(nightborne.x, NB_MIN_X, NB_MAX_X);
+}
+
+function drawNightborne() {
+  if (!isNightborneZone() || !nightborne.active) return;
+
+  const sheet = assets.nightborne?.sheet;
+  if (!sheet || !sheet.loaded) return;
+
+  const state = nightborne.state;
+  const row = NB_ROWS[state] ?? NB_ROWS.idle;
+  const maxFrames = NB_FRAME_COUNTS[state] ?? 9;
+
+  let frameIndex = 0;
+  if (state === "idle") {
+    frameIndex = Math.floor(animationClock * 6) % maxFrames;
+  } else if (state === "run") {
+    frameIndex = Math.floor(animationClock * 10) % maxFrames;
+  } else if (state === "attack") {
+    frameIndex = Math.min(maxFrames - 1, Math.floor(nightborne.stateTime * 15));
+  } else if (state === "hurt") {
+    frameIndex = Math.min(maxFrames - 1, Math.floor(nightborne.stateTime * 10));
+  } else if (state === "dead") {
+    frameIndex = Math.min(maxFrames - 1, Math.floor(nightborne.stateTime * 8));
+  }
+
+  const sx = frameIndex * NB_FRAME_SIZE;
+  const sy = row * NB_FRAME_SIZE;
+  const drawX = Math.round(nightborne.x);
+  const drawY = Math.round(NB_FLOOR_Y - cameraY);
+
+  context.save();
+  context.translate(drawX, drawY);
+  context.scale(nightborne.direction < 0 ? -1 : 1, 1);
+
+  // Shadow
+  context.fillStyle = "rgba(0, 0, 0, 0.35)";
+  context.beginPath();
+  context.ellipse(0, 10, 50, 12, 0, 0, Math.PI * 2);
+  context.fill();
+
+  // Invulnerability flash
+  if (nightborne.invulnerableTime > 0 && Math.floor(nightborne.invulnerableTime * 20) % 2) {
+    context.globalAlpha = 0.4;
+  }
+
+  context.drawImage(
+    sheet.image,
+    sx, sy, NB_FRAME_SIZE, NB_FRAME_SIZE,
+    -NB_DRAW_SIZE / 2, -NB_DRAW_SIZE + 14,
+    NB_DRAW_SIZE, NB_DRAW_SIZE
+  );
+
+  context.restore();
+
+  // Health bar
+  if (!nightborne.dead) {
+    drawHealthBar(drawX - 50, drawY - NB_DRAW_SIZE + 2, 100, 6, nightborne.health, nightborne.maxHealth, "#8b3fbf");
+  }
+}
+
+// ── Zone Mobs ──
+let zoneMobs = [];
+const zoneMobCache = {}; // persists mob state per zone
+
+function createMob(spawn) {
+  const typeDef = MOB_TYPES[spawn.type];
+  return {
+    type: spawn.type,
+    typeDef,
+    x: spawn.x,
+    floorY: spawn.floorY,
+    patrolMin: spawn.patrolMin,
+    patrolMax: spawn.patrolMax,
+    direction: Math.random() < 0.5 ? -1 : 1,
+    state: "idle",
+    stateTime: 0,
+    health: typeDef.health,
+    attackCooldown: 0,
+    attackHitDone: false,
+    invulnerableTime: 0,
+    hurtTime: 0,
+    dead: false,
+    idleTimer: 1 + Math.random() * 2
+  };
+}
+
+function resetZoneMobs() {
+  const zoneIndex = getForestRouteIndex();
+  const spawns = ZONE_MOB_SPAWNS[zoneIndex];
+  if (!spawns) { zoneMobs = []; return; }
+
+  // First visit: create mobs. Revisit: restore saved state.
+  if (!zoneMobCache[zoneIndex]) {
+    zoneMobCache[zoneIndex] = spawns.map(s => createMob(s));
+  }
+  zoneMobs = zoneMobCache[zoneIndex];
+}
+
+function damagePlayerFromMob(amount, attackerX) {
+  if (player.dead || player.invulnerableTime > 0) return;
+  if (isPlayerDashing()) return;
+
+  const attackerOnRight = attackerX > getPlayerCenterX();
+  const playerFacing = (attackerOnRight && player.facing === 1) || (!attackerOnRight && player.facing === -1);
+  if (isPlayerBlocking() && playerFacing) {
+    player.invulnerableTime = 0.18;
+    return;
+  }
+
+  player.health = clamp(player.health - amount, 0, player.maxHealth);
+  player.hurtTime = HURT_DURATION;
+  player.invulnerableTime = PLAYER_IFRAME_DURATION;
+  player.blocking = false;
+  player.dashTime = 0;
+  player.attackTime = 0;
+  player.specialTime = 0;
+  player.jumpAttackTime = 0;
+  player.jumpAttackQueued = false;
+  if (player.lightningChanneling) {
+    player.lightningChanneling = false;
+    player.lightningStabCooldown = LIGHTNING_STAB_COOLDOWN;
+    for (const bolt of lightningBolts) { bolt.releasing = true; bolt.fadeTime = 0; }
+  }
+  player.jumpAttackHitDone = true;
+  player.specialHitDone = true;
+  player.attackHitDone = true;
+  player.vx = attackerOnRight ? -130 : 130;
+
+  if (player.health <= 0) {
+    player.dead = true;
+    player.deathTimer = 1.1;
+    player.vx = 0;
+    player.vy = 0;
+    clearInputState();
+  }
+}
+
+function damageMob(mob, amount) {
+  if (mob.dead || mob.invulnerableTime > 0) return;
+  mob.health = Math.max(0, mob.health - amount);
+  mob.invulnerableTime = mob.typeDef.iframeDuration;
+  mob.hurtTime = HURT_DURATION;
+  mob.state = mob.health <= 0 ? "dead" : "hurt";
+  mob.stateTime = 0;
+  mob.attackHitDone = true;
+  if (mob.health <= 0) mob.dead = true;
+}
+
+function getMobCenterX(mob) { return mob.x; }
+function getMobFloorY(mob) { return mob.floorY; }
+
+function updateMobs(deltaTime) {
+  if (!isForestScene() || player.dead) return;
+  const zoneIndex = getForestRouteIndex();
+  if (!ZONE_MOB_SPAWNS[zoneIndex]) return;
+
+  for (const mob of zoneMobs) {
+    if (mob.invulnerableTime > 0) mob.invulnerableTime = Math.max(0, mob.invulnerableTime - deltaTime);
+    if (mob.hurtTime > 0) mob.hurtTime = Math.max(0, mob.hurtTime - deltaTime);
+    if (mob.attackCooldown > 0) mob.attackCooldown = Math.max(0, mob.attackCooldown - deltaTime);
+
+    if (mob.dead) {
+      mob.stateTime += deltaTime;
+      continue;
+    }
+
+    mob.stateTime += deltaTime;
+
+    if (mob.hurtTime > 0) { mob.state = "hurt"; continue; }
+
+    const td = mob.typeDef;
+    const pcx = getPlayerCenterX();
+    const pcy = player.y + player.height;
+    const dist = Math.abs(pcx - mob.x);
+    const vertDist = Math.abs(pcy - mob.floorY);
+    const nearPlayer = dist < td.attackRange && vertDist < 80;
+    const canSee = dist < td.chaseRange && vertDist < 120;
+
+    // Attack state
+    if (mob.state === "attack") {
+      if (!mob.attackHitDone && mob.stateTime >= td.attackDuration * 0.45 && nearPlayer) {
+        if (!isPlayerDashing()) {
+          damagePlayerFromMob(td.damage, mob.x);
+        }
+        mob.attackHitDone = true;
+      }
+      if (mob.stateTime >= td.attackDuration) {
+        mob.state = "idle";
+        mob.stateTime = 0;
+        mob.idleTimer = 0.3 + Math.random() * 0.5;
+      }
+      continue;
+    }
+
+    // Start attack
+    if (nearPlayer && mob.attackCooldown <= 0) {
+      mob.state = "attack";
+      mob.stateTime = 0;
+      mob.attackHitDone = false;
+      mob.attackCooldown = td.attackCooldown;
+      mob.direction = pcx > mob.x ? 1 : -1;
+      continue;
+    }
+
+    // Chase player
+    if (canSee) {
+      mob.state = "run";
+      mob.direction = pcx > mob.x ? 1 : -1;
+      mob.x += mob.direction * td.chaseSpeed * deltaTime;
+      mob.x = clamp(mob.x, mob.patrolMin, mob.patrolMax);
+      continue;
+    }
+
+    // Patrol / idle
+    if (mob.idleTimer > 0) {
+      mob.state = "idle";
+      mob.idleTimer -= deltaTime;
+      if (mob.idleTimer <= 0) {
+        mob.direction = -mob.direction;
+      }
+      continue;
+    }
+
+    mob.state = "run";
+    mob.x += mob.direction * td.speed * deltaTime;
+    if (mob.x <= mob.patrolMin || mob.x >= mob.patrolMax) {
+      mob.direction = -mob.direction;
+      mob.x = clamp(mob.x, mob.patrolMin, mob.patrolMax);
+      mob.state = "idle";
+      mob.idleTimer = 1 + Math.random() * 2;
+    }
+  }
+}
+
+function drawMobs() {
+  if (!isForestScene()) return;
+  const zoneIndex = getForestRouteIndex();
+  if (!ZONE_MOB_SPAWNS[zoneIndex]) return;
+
+  for (const mob of zoneMobs) {
+    const td = mob.typeDef;
+    const anim = td.anims[mob.state] || td.anims.idle;
+    const spriteAsset = assets.mobs[anim.key];
+    if (!spriteAsset || !spriteAsset.loaded) continue;
+
+    // Dead mobs: fade out after death animation completes
+    const deathDone = mob.dead && mob.stateTime > anim.frames / anim.fps;
+    if (deathDone && mob.stateTime > anim.frames / anim.fps + 1.5) continue; // fully gone
+
+    let frameIndex;
+    if (mob.state === "attack" || mob.state === "hurt" || mob.state === "dead") {
+      frameIndex = Math.min(anim.frames - 1, Math.floor(mob.stateTime * anim.fps));
+    } else {
+      frameIndex = Math.floor(animationClock * anim.fps) % anim.frames;
+    }
+
+    const sx = frameIndex * MOB_FRAME_SIZE;
+    const drawSize = td.drawSize;
+    const drawX = Math.round(mob.x);
+    const drawY = Math.round(mob.floorY - cameraY);
+
+    context.save();
+    context.translate(drawX, drawY);
+    context.scale(mob.direction < 0 ? -1 : 1, 1);
+
+    // Shadow
+    context.fillStyle = "rgba(0,0,0,0.3)";
+    context.beginPath();
+    context.ellipse(0, 4, drawSize * 0.35, 7, 0, 0, Math.PI * 2);
+    context.fill();
+
+    // Invulnerability flash
+    if (mob.invulnerableTime > 0 && Math.floor(mob.invulnerableTime * 20) % 2) {
+      context.globalAlpha = 0.4;
+    }
+    // Fade out dead mobs
+    if (deathDone) {
+      const fadeProgress = (mob.stateTime - anim.frames / anim.fps) / 1.5;
+      context.globalAlpha = Math.max(0, 1 - fadeProgress);
+    }
+
+    const footOffset = drawSize * (td.footRatio || 0.73);
+    context.drawImage(
+      spriteAsset.image,
+      sx, 0, MOB_FRAME_SIZE, MOB_FRAME_SIZE,
+      -drawSize / 2, -footOffset,
+      drawSize, drawSize
+    );
+    context.restore();
+
+    // Health bar (only if alive and damaged)
+    if (!mob.dead && mob.health < td.health) {
+      drawHealthBar(drawX - 30, drawY - footOffset + 2, 60, 5, mob.health, td.health, td.healthBarColor);
+    }
+  }
+}
+
+function checkMobHit(attackerX, attackerFacing, range, vertRange, damage) {
+  if (!isForestScene()) return false;
+  let hit = false;
+  for (const mob of zoneMobs) {
+    if (mob.dead || mob.invulnerableTime > 0) continue;
+    const dist = Math.abs(mob.x - attackerX);
+    const inRange = dist <= range;
+    const correctSide = (attackerFacing === 1 && mob.x >= attackerX) || (attackerFacing === -1 && mob.x <= attackerX);
+    const vertOk = Math.abs((player.y + player.height) - mob.floorY) < vertRange;
+    if (inRange && correctSide && vertOk) {
+      damageMob(mob, damage);
+      hit = true;
+      break; // one hit per attack swing
+    }
+  }
+  return hit;
+}
+
+function checkMobProjectileHit(projectileX, damage) {
+  if (!isForestScene()) return false;
+  for (const mob of zoneMobs) {
+    if (mob.dead || mob.invulnerableTime > 0) continue;
+    if (Math.abs(mob.x - projectileX) <= PLAYER_SPECIAL_RANGE * 0.52) {
+      damageMob(mob, damage);
+      return true;
+    }
+  }
+  return false;
 }
 
 function getTeleporterAnimation(state) {
@@ -1547,6 +2606,11 @@ function respawnPlayerAfterDeath() {
   player.specialTime = 0;
   player.specialCooldown = 0;
   player.specialHitDone = false;
+  player.lightningStabTime = 0;
+  player.lightningStabCooldown = 0;
+  player.lightningBoltSpawned = false;
+  player.lightningDamageTick = 0;
+  player.lightningChanneling = false;
   player.jumpAttackTime = 0;
   player.jumpAttackCooldown = 0;
   player.jumpAttackHitDone = false;
@@ -1572,6 +2636,7 @@ function respawnPlayerAfterDeath() {
     encounter.bossStarted = true;
     encounter.bossDefeated = true;
     encounter.forestUnlocked = true;
+    encounter.nightborneDefeated = true;
     forestBonfire.active = true;
     setTeleporterState(teleporters.entry, "hidden");
     setTeleporterState(teleporters.base, "active");
@@ -1745,6 +2810,7 @@ function resetPlayer() {
   encounter.bossStarted = false;
   encounter.bossDefeated = false;
   encounter.forestUnlocked = false;
+  encounter.nightborneDefeated = false;
   checkpoint.active = false;
   checkpoint.scene = "tower";
   checkpoint.x = player.spawnX;
@@ -1774,6 +2840,11 @@ function resetPlayer() {
   player.specialTime = 0;
   player.specialCooldown = 0;
   player.specialHitDone = false;
+  player.lightningStabTime = 0;
+  player.lightningStabCooldown = 0;
+  player.lightningBoltSpawned = false;
+  player.lightningDamageTick = 0;
+  player.lightningChanneling = false;
   player.jumpAttackTime = 0;
   player.jumpAttackCooldown = 0;
   player.jumpAttackHitDone = false;
@@ -1803,6 +2874,7 @@ function resetPlayer() {
     encounter.bossStarted = true;
     encounter.bossDefeated = true;
     encounter.forestUnlocked = true;
+    encounter.nightborneDefeated = true;
     checkpoint.active = true;
     checkpoint.scene = "forest";
     checkpoint.forestZone = 0;
@@ -1834,6 +2906,7 @@ function canStartJump() {
   const attackBlocksJump =
     (isPlayerAttacking() && !canCancelAttack()) ||
     isPlayerSpecialAttacking() ||
+    isLightningStabActive() ||
     isPlayerJumpAttacking();
   return (
     !player.won &&
@@ -1922,6 +2995,7 @@ function clearInputState() {
   input.down = false;
   input.attackHeld = false;
   input.jumpHeld = false;
+  input.lightningHeld = false;
   player.jumpHeld = false;
   player.jumpBufferTimer = 0;
   player.coyoteTimer = 0;
@@ -1990,11 +3064,11 @@ function triggerSamuraiJumpAttack() {
   return true;
 }
 
-function triggerSamuraiSpecial() {
+function triggerSamuraiSpecial(fromGamepad) {
   if (
     !canPlayerFight() ||
     getActiveCharacter().id !== "samurai" ||
-    !isSamuraiSpecialInputActive() ||
+    (!fromGamepad && !isSamuraiSpecialInputActive()) ||
     player.hurtTime > 0 ||
     !player.grounded
   ) {
@@ -2177,7 +3251,11 @@ function handleKeyChange(event, pressed) {
   if (event.code === "Escape" && pressed) {
     event.preventDefault();
     event.stopPropagation();
-    togglePauseMenu();
+    if (document.fullscreenElement) {
+      setFsMenuOpen(!fsMenuOpen);
+    } else {
+      togglePauseMenu();
+    }
     return;
   }
 
@@ -2230,8 +3308,11 @@ function handleKeyChange(event, pressed) {
     triggerPlayerDash();
   }
 
-  if (pressed && event.code === "KeyR") {
-    resetPlayer();
+  if (event.code === "KeyR") {
+    input.lightningHeld = pressed;
+    if (pressed) {
+      triggerLightningStab();
+    }
   }
 }
 
@@ -2296,6 +3377,134 @@ window.addEventListener("mouseup", (event) => {
     setPlayerBlocking(false);
   }
 });
+
+// ── PS4 / Generic Gamepad Support ──
+const GAMEPAD_DEADZONE = 0.25;
+const gpPrev = {
+  jump: false, attack: false, dash: false, block: false,
+  special: false, lightning: false, pause: false, anyDirection: false
+};
+
+function getActiveGamepad() {
+  if (!navigator.getGamepads) return null;
+  const pads = navigator.getGamepads();
+  for (let i = 0; i < pads.length; i++) {
+    if (pads[i] && pads[i].connected) return pads[i];
+  }
+  return null;
+}
+
+function pollGamepad() {
+  const gp = getActiveGamepad();
+  if (!gp) return;
+
+  // Ensure game accepts input when controller is used
+  if (!gameInputActive) activateGameInput();
+
+  // Left stick
+  const lx = gp.axes[0] || 0;
+  const ly = gp.axes[1] || 0;
+
+  // D-pad buttons (PS4: 12=up, 13=down, 14=left, 15=right)
+  const dpadLeft  = gp.buttons[14] && gp.buttons[14].pressed;
+  const dpadRight = gp.buttons[15] && gp.buttons[15].pressed;
+  const dpadDown  = gp.buttons[13] && gp.buttons[13].pressed;
+
+  const gpLeft  = lx < -GAMEPAD_DEADZONE || dpadLeft;
+  const gpRight = lx >  GAMEPAD_DEADZONE || dpadRight;
+  const gpDown  = ly >  GAMEPAD_DEADZONE || dpadDown;
+
+  // Only override input if any gamepad direction is active, otherwise leave keyboard input alone
+  if (gpLeft || gpRight || gpDown) {
+    input.left  = gpLeft;
+    input.right = gpRight;
+    input.down  = gpDown;
+  } else if (gpPrev.anyDirection) {
+    input.left  = false;
+    input.right = false;
+    input.down  = false;
+  }
+  gpPrev.anyDirection = gpLeft || gpRight || gpDown;
+
+  // PS4 buttons: 0=Cross(X), 1=Circle, 2=Square, 3=Triangle
+  // 4=L1, 5=R1, 9=Options
+  const jumpBtn       = gp.buttons[0] && gp.buttons[0].pressed;
+  const dashBtn       = gp.buttons[1] && gp.buttons[1].pressed;
+  const attackBtn     = gp.buttons[2] && gp.buttons[2].pressed;
+  const specialBtn    = gp.buttons[3] && gp.buttons[3].pressed;
+  const lightningBtn  = gp.buttons[4] && gp.buttons[4].pressed;  // L1
+  const blockBtn      = gp.buttons[5] && gp.buttons[5].pressed;
+  const pauseBtn      = gp.buttons[9] && gp.buttons[9].pressed;
+
+  if (pauseMenuOpen || fsMenuOpen) {
+    // Only handle pause toggle from controller when paused
+    if (pauseBtn && !gpPrev.pause) {
+      if (document.fullscreenElement) {
+        setFsMenuOpen(!fsMenuOpen);
+      } else {
+        togglePauseMenu();
+      }
+    }
+    gpPrev.pause = pauseBtn;
+    return;
+  }
+
+  // Jump: trigger on press, release on release
+  if (jumpBtn && !gpPrev.jump) {
+    beginJump();
+  } else if (!jumpBtn && gpPrev.jump) {
+    endJump();
+  }
+
+  // Attack: trigger on press, release clears
+  if (attackBtn && !gpPrev.attack) {
+    input.attackHeld = true;
+    triggerPlayerAttack();
+  } else if (!attackBtn && gpPrev.attack) {
+    input.attackHeld = false;
+    player.jumpAttackQueued = false;
+  }
+
+  // Dash: trigger on press
+  if (dashBtn && !gpPrev.dash) {
+    triggerPlayerDash();
+  }
+
+  // Block: hold R1
+  if (blockBtn && !gpPrev.block) {
+    setPlayerBlocking(true);
+  } else if (!blockBtn && gpPrev.block) {
+    setPlayerBlocking(false);
+  }
+
+  // Special: Triangle
+  if (specialBtn && !gpPrev.special) {
+    triggerSamuraiSpecial(true);
+  }
+
+  // Lightning Stab: L1
+  input.lightningHeld = !!lightningBtn;
+  if (lightningBtn && !gpPrev.lightning) {
+    triggerLightningStab();
+  }
+
+  // Pause: Options
+  if (pauseBtn && !gpPrev.pause) {
+    if (document.fullscreenElement) {
+      setFsMenuOpen(!fsMenuOpen);
+    } else {
+      togglePauseMenu();
+    }
+  }
+
+  gpPrev.jump = jumpBtn;
+  gpPrev.attack = attackBtn;
+  gpPrev.dash = dashBtn;
+  gpPrev.block = blockBtn;
+  gpPrev.special = specialBtn;
+  gpPrev.lightning = lightningBtn;
+  gpPrev.pause = pauseBtn;
+}
 
 function resolvePlatforms(previousBottom) {
   player.grounded = false;
@@ -2501,7 +3710,13 @@ function tryAdvanceForestRoute() {
 
   const transitions = getForestRouteTransitions();
   for (const transition of transitions) {
-    if (!playerOverlapsRect(transition)) {
+    const overlaps = playerOverlapsRect(transition);
+    if (!overlaps) {
+      continue;
+    }
+
+    // Block exit if Nightborne must be defeated first
+    if (transition.requireNightborneDead && !nightborne.dead) {
       continue;
     }
 
@@ -2608,14 +3823,21 @@ function updateBoss(deltaTime) {
 }
 
 function update(deltaTime) {
-  if (pauseMenuOpen) {
+  if (pauseMenuOpen || fsMenuOpen) {
     return;
   }
 
   animationClock += deltaTime;
   updateBoss(deltaTime);
+  // Activate & update Nightborne in zone 4
+  if (isNightborneZone() && !nightborne.active && !nightborne.dead) {
+    activateNightborne();
+  }
+  updateNightborne(deltaTime);
+  updateMobs(deltaTime);
   updateTeleporters(deltaTime);
   updateSpecialProjectiles(deltaTime);
+  updateLightningBolts(deltaTime);
 
   if (player.attackCooldown > 0) {
     player.attackCooldown = Math.max(0, player.attackCooldown - deltaTime);
@@ -2627,6 +3849,36 @@ function update(deltaTime) {
 
   if (player.specialTime > 0) {
     player.specialTime = Math.max(0, player.specialTime - deltaTime);
+  }
+
+  // Lightning stab update — hold to channel
+  if (player.lightningStabTime > 0) {
+    player.lightningStabTime = Math.max(0, player.lightningStabTime - deltaTime);
+    const elapsed = LIGHTNING_STAB_DURATION - player.lightningStabTime;
+    if (!player.lightningBoltSpawned && elapsed >= LIGHTNING_STAB_BOLT_DELAY) {
+      player.lightningBoltSpawned = true;
+      spawnLightningBolt();
+    }
+  }
+  // Channel logic: only active after stab animation ends and bolt exists
+  if (player.lightningChanneling && player.lightningStabTime <= 0) {
+    const shouldChannel = input.lightningHeld && !player.dead && player.hurtTime <= 0 && lightningBolts.length > 0;
+    if (shouldChannel) {
+      // Sustain beam
+      for (const bolt of lightningBolts) { bolt.releasing = false; }
+      player.vx = 0;
+    } else {
+      // End channel — fade bolts
+      player.lightningChanneling = false;
+      player.lightningStabCooldown = LIGHTNING_STAB_COOLDOWN;
+      for (const bolt of lightningBolts) {
+        if (!bolt.releasing) { bolt.releasing = true; bolt.fadeTime = 0; }
+      }
+    }
+  }
+
+  if (player.lightningStabCooldown > 0) {
+    player.lightningStabCooldown = Math.max(0, player.lightningStabCooldown - deltaTime);
   }
 
   if (player.specialCooldown > 0) {
@@ -2711,6 +3963,28 @@ function update(deltaTime) {
       player.dashHitDone = true;
     }
 
+    // Nightborne dash hit
+    if (
+      isPlayerDashing() &&
+      !player.dashHitDone &&
+      isNightborneZone() &&
+      nightborne.active && !nightborne.dead &&
+      Math.abs(nightborne.x - getPlayerCenterX()) <= PLAYER_ATTACK_RANGE * 0.82 &&
+      ((player.facing === 1 && nightborne.x >= getPlayerCenterX()) ||
+        (player.facing === -1 && nightborne.x <= getPlayerCenterX())) &&
+      Math.abs(player.y - (NB_FLOOR_Y - player.height)) < 90
+    ) {
+      damageNightborne(PLAYER_DASH_DAMAGE);
+      player.dashHitDone = true;
+    }
+
+    // Zone mob dash hit
+    if (isPlayerDashing() && !player.dashHitDone) {
+      if (checkMobHit(getPlayerCenterX(), player.facing, PLAYER_ATTACK_RANGE * 0.82, 90, PLAYER_DASH_DAMAGE)) {
+        player.dashHitDone = true;
+      }
+    }
+
     if (isPlayerAttacking()) {
       if (
         !player.attackHitDone &&
@@ -2724,6 +3998,28 @@ function update(deltaTime) {
       ) {
         damageBoss(PLAYER_ATTACK_DAMAGE);
         player.attackHitDone = true;
+      }
+
+      // Nightborne normal attack hit
+      if (
+        !player.attackHitDone &&
+        isNightborneZone() &&
+        nightborne.active && !nightborne.dead &&
+        getAttackProgress() >= 0.42 &&
+        Math.abs(nightborne.x - getPlayerCenterX()) <= PLAYER_ATTACK_RANGE &&
+        ((player.facing === 1 && nightborne.x >= getPlayerCenterX()) ||
+          (player.facing === -1 && nightborne.x <= getPlayerCenterX())) &&
+        Math.abs(player.y - (NB_FLOOR_Y - player.height)) < PLAYER_AIR_ATTACK_VERTICAL_RANGE
+      ) {
+        damageNightborne(PLAYER_ATTACK_DAMAGE);
+        player.attackHitDone = true;
+      }
+
+      // Zone mob normal attack hit
+      if (!player.attackHitDone && getAttackProgress() >= 0.42) {
+        if (checkMobHit(getPlayerCenterX(), player.facing, PLAYER_ATTACK_RANGE, PLAYER_AIR_ATTACK_VERTICAL_RANGE, PLAYER_ATTACK_DAMAGE)) {
+          player.attackHitDone = true;
+        }
       }
     }
 
@@ -2742,6 +4038,31 @@ function update(deltaTime) {
       ) {
         damageBoss(PLAYER_JUMP_ATTACK_DAMAGE);
         player.jumpAttackHitDone = true;
+      }
+
+      // Nightborne jump attack hit
+      if (
+        !player.jumpAttackHitDone &&
+        isNightborneZone() &&
+        nightborne.active && !nightborne.dead &&
+        jumpAttackProgress >= PLAYER_JUMP_ATTACK_HIT_START &&
+        jumpAttackProgress <= PLAYER_JUMP_ATTACK_HIT_END &&
+        Math.abs(nightborne.x - getPlayerCenterX()) <= PLAYER_JUMP_ATTACK_RANGE &&
+        ((player.facing === 1 && nightborne.x >= getPlayerCenterX()) ||
+          (player.facing === -1 && nightborne.x <= getPlayerCenterX())) &&
+        Math.abs(player.y - (NB_FLOOR_Y - player.height)) < PLAYER_JUMP_ATTACK_VERTICAL_RANGE
+      ) {
+        damageNightborne(PLAYER_JUMP_ATTACK_DAMAGE);
+        player.jumpAttackHitDone = true;
+      }
+
+      // Zone mob jump attack hit
+      if (!player.jumpAttackHitDone &&
+          jumpAttackProgress >= PLAYER_JUMP_ATTACK_HIT_START &&
+          jumpAttackProgress <= PLAYER_JUMP_ATTACK_HIT_END) {
+        if (checkMobHit(getPlayerCenterX(), player.facing, PLAYER_JUMP_ATTACK_RANGE, PLAYER_JUMP_ATTACK_VERTICAL_RANGE, PLAYER_JUMP_ATTACK_DAMAGE)) {
+          player.jumpAttackHitDone = true;
+        }
       }
     }
 
@@ -2846,6 +4167,7 @@ function update(deltaTime) {
     }
 
     updateForestBonfire(deltaTime);
+    updateAmbientParticles(deltaTime);
   }
 
   if (isTowerScene()) {
@@ -2902,6 +4224,194 @@ function drawBackdropTiled(asset, y, drawHeight, alpha = 1, driftSpeed = 0, blen
   context.restore();
 }
 
+// ── Ambient Particle System ──
+const ambientParticles = [];
+const MAX_PARTICLES = 40;
+
+// Torch positions per zone (canvas coords) — matched to background images
+const ZONE_TORCHES = {
+  1: [ // Crimson Cavern — 2 blue torches on right stone pillars
+    { x: 600, y: 280, color: "blue" },
+    { x: 738, y: 280, color: "blue" },
+  ],
+  2: [ // Dark Temple — blue torches on arch arms + pillar
+    { x: 130, y: 230, color: "blue" },   // far-left arm
+    { x: 206, y: 305, color: "blue" },   // left inner arch
+    { x: 514, y: 305, color: "blue" },   // right inner arch
+    { x: 588, y: 228, color: "blue" },   // right arm
+    { x: 924, y: 191, color: "blue" },   // far-right pillar
+  ],
+  3: [ // Boss Leadup — 3 blue torches + red gate glow
+    { x: 288, y: 250, color: "blue" },
+    { x: 413, y: 270, color: "blue" },
+    { x: 538, y: 250, color: "blue" },
+    { x: 701, y: 340, color: "red" },
+  ],
+  4: [ // Boss Room — purple torches flanking the arena
+    { x: 200, y: 230, color: "red" },
+    { x: 400, y: 200, color: "red" },
+    { x: 560, y: 200, color: "red" },
+    { x: 760, y: 230, color: "red" },
+  ],
+  5: [ // Shattered Spire — faint blue lights on broken pillars
+    { x: 120, y: 300, color: "blue" },
+    { x: 500, y: 260, color: "blue" },
+    { x: 760, y: 220, color: "blue" },
+  ],
+  6: [ // Windswept Heights — cold blue scattered lights
+    { x: 180, y: 340, color: "blue" },
+    { x: 400, y: 200, color: "blue" },
+    { x: 650, y: 250, color: "blue" },
+    { x: 820, y: 180, color: "blue" },
+  ],
+  7: [ // The Pinnacle — eerie purple-red lights
+    { x: 150, y: 300, color: "red" },
+    { x: 420, y: 200, color: "red" },
+    { x: 700, y: 150, color: "red" },
+    { x: 500, y: 100, color: "blue" },
+  ]
+};
+
+function spawnZoneParticles(zoneIndex) {
+  if (!isForestScene()) return;
+  if (zoneIndex < 1 || zoneIndex > 7) return;
+
+  // Falling ash/dust from the sky — subtle, slow, drifting down
+  if (ambientParticles.length < MAX_PARTICLES && Math.random() < 0.04) {
+    const colors = { 1: "ash-red", 2: "ash-blue", 3: "ash-dark", 4: "ash-red", 5: "ash-blue", 6: "ash-blue", 7: "ash-dark" };
+    ambientParticles.push({
+      x: Math.random() * VIEW_WIDTH,
+      y: -5,
+      vx: (Math.random() - 0.5) * 6,
+      vy: 8 + Math.random() * 14,
+      size: 0.8 + Math.random() * 1.2,
+      life: 6 + Math.random() * 6,
+      maxLife: 6 + Math.random() * 6,
+      color: colors[zoneIndex],
+      zone: zoneIndex,
+      wobbleOffset: Math.random() * Math.PI * 2,
+      wobbleSpeed: 0.8 + Math.random() * 1.2
+    });
+  }
+
+  // Torch fire particles — sparks and flames rising from each torch
+  const torches = ZONE_TORCHES[zoneIndex] || [];
+  for (const torch of torches) {
+    if (ambientParticles.length >= MAX_PARTICLES) break;
+    // Spawn sparse torch particles — just a few wisps
+    if (Math.random() < 0.15) {
+      const colorKey = torch.color === "red" ? "torch-red" : "torch-blue";
+      ambientParticles.push({
+        x: torch.x + (Math.random() - 0.5) * 6,
+        y: torch.y + (Math.random() - 0.5) * 3,
+        vx: (Math.random() - 0.5) * 6,
+        vy: -(8 + Math.random() * 12),
+        size: 0.6 + Math.random() * 1.2,
+        life: 0.4 + Math.random() * 1.0,
+        maxLife: 0.4 + Math.random() * 1.0,
+        color: colorKey,
+        zone: zoneIndex
+      });
+    }
+  }
+}
+
+function updateAmbientParticles(deltaTime) {
+  const zoneIndex = getForestRouteIndex();
+  spawnZoneParticles(zoneIndex);
+
+  for (let i = ambientParticles.length - 1; i >= 0; i--) {
+    const p = ambientParticles[i];
+    p.life -= deltaTime;
+    if (p.life <= 0 || p.zone !== zoneIndex) {
+      ambientParticles.splice(i, 1);
+      continue;
+    }
+    if (p.wobbleOffset !== undefined) {
+      p.x += Math.sin(p.wobbleOffset + (p.maxLife - p.life) * p.wobbleSpeed) * 0.3;
+    }
+    p.x += p.vx * deltaTime;
+    p.y += p.vy * deltaTime;
+  }
+}
+
+function drawAmbientParticles() {
+  if (!isForestScene()) return;
+  const zoneIndex = getForestRouteIndex();
+  if (zoneIndex < 1 || zoneIndex > 7) return;
+
+  // Draw torch glow halos — big pulsing light auras
+  const torches = ZONE_TORCHES[zoneIndex] || [];
+  context.save();
+  context.globalCompositeOperation = "screen";
+  for (const torch of torches) {
+    const glowColor = torch.color === "red" ? "rgba(200,40,20," : "rgba(60,140,255,";
+    // Strong pulse: oscillates between 0.5 and 1.0
+    const t = Date.now() * 0.003 + torch.x * 0.7;
+    const pulse = 0.65 + Math.sin(t) * 0.25 + Math.sin(t * 2.3) * 0.1;
+    // Outer glow — radius 70px
+    const outerGrad = context.createRadialGradient(torch.x, torch.y, 0, torch.x, torch.y, 70);
+    outerGrad.addColorStop(0, glowColor + (0.30 * pulse) + ")");
+    outerGrad.addColorStop(0.35, glowColor + (0.14 * pulse) + ")");
+    outerGrad.addColorStop(0.7, glowColor + (0.04 * pulse) + ")");
+    outerGrad.addColorStop(1, glowColor + "0)");
+    context.fillStyle = outerGrad;
+    context.beginPath();
+    context.arc(torch.x, torch.y, 70, 0, Math.PI * 2);
+    context.fill();
+    // Bright inner core — radius 22px
+    const innerGrad = context.createRadialGradient(torch.x, torch.y, 0, torch.x, torch.y, 22);
+    innerGrad.addColorStop(0, glowColor + (0.50 * pulse) + ")");
+    innerGrad.addColorStop(0.5, glowColor + (0.18 * pulse) + ")");
+    innerGrad.addColorStop(1, glowColor + "0)");
+    context.fillStyle = innerGrad;
+    context.beginPath();
+    context.arc(torch.x, torch.y, 22, 0, Math.PI * 2);
+    context.fill();
+  }
+  context.restore();
+
+  // Draw particles
+  context.save();
+  for (const p of ambientParticles) {
+    const fadeIn = Math.min(1, (p.maxLife - p.life) * 4);
+    const fadeOut = Math.min(1, p.life / p.maxLife * 3);
+    const alpha = fadeIn * fadeOut;
+
+    if (p.color === "ash-red") {
+      context.globalAlpha = alpha * 0.2;
+      context.fillStyle = "#aa4433";
+    } else if (p.color === "ash-blue") {
+      context.globalAlpha = alpha * 0.15;
+      context.fillStyle = "#556688";
+    } else if (p.color === "ash-dark") {
+      context.globalAlpha = alpha * 0.18;
+      context.fillStyle = "#663333";
+    } else if (p.color === "torch-blue") {
+      context.globalAlpha = alpha * 0.7;
+      context.shadowColor = "#4488ff";
+      context.shadowBlur = 3;
+      context.fillStyle = "#88ccff";
+    } else if (p.color === "torch-orange") {
+      context.globalAlpha = alpha * 0.7;
+      context.shadowColor = "#ff8800";
+      context.shadowBlur = 3;
+      context.fillStyle = "#ffcc66";
+    } else if (p.color === "torch-red") {
+      context.globalAlpha = alpha * 0.7;
+      context.shadowColor = "#ff2200";
+      context.shadowBlur = 3;
+      context.fillStyle = "#ff6644";
+    }
+
+    context.beginPath();
+    context.arc(p.x, p.y, p.size, 0, Math.PI * 2);
+    context.fill();
+    context.shadowBlur = 0;
+  }
+  context.restore();
+}
+
 function drawForestThemeBackdrop() {
   if (!isForestScene()) {
     return;
@@ -2922,6 +4432,32 @@ function drawForestThemeBackdrop() {
     return;
   }
 
+  if (themeId === "first-cp") {
+    if (themes.firstCp?.bg?.loaded) {
+      const img = themes.firstCp.bg.image;
+      const imgRatio = img.naturalWidth / img.naturalHeight;
+      const canvasRatio = VIEW_WIDTH / VIEW_HEIGHT;
+      let drawW;
+      let drawH;
+
+      if (imgRatio > canvasRatio) {
+        drawH = VIEW_HEIGHT;
+        drawW = VIEW_HEIGHT * imgRatio;
+      } else {
+        drawW = VIEW_WIDTH;
+        drawH = VIEW_WIDTH / imgRatio;
+      }
+
+      drawW *= 1.04;
+      drawH *= 1.04;
+
+      const drawX = (VIEW_WIDTH - drawW) / 2;
+      const drawY = (VIEW_HEIGHT - drawH) / 2 + 20;
+      context.drawImage(img, drawX, drawY, drawW, drawH);
+    }
+    return;
+  }
+
   if (themeId === "dark-temple") {
     if (themes.darkTemple?.bg?.loaded) {
       context.drawImage(themes.darkTemple.bg.image, 0, 0, VIEW_WIDTH, VIEW_HEIGHT);
@@ -2938,11 +4474,80 @@ function drawForestThemeBackdrop() {
 
   if (themeId === "ruined-citadel") {
     if (themes.ruinedCitadel?.bg?.loaded) {
-      context.drawImage(themes.ruinedCitadel.bg.image, 0, 0, VIEW_WIDTH, VIEW_HEIGHT);
+      const img = themes.ruinedCitadel.bg.image;
+      // Cover-fit: fill canvas without distortion, crop overflow
+      const imgRatio = img.naturalWidth / img.naturalHeight;
+      const canvasRatio = VIEW_WIDTH / VIEW_HEIGHT;
+      let drawW, drawH;
+      if (imgRatio > canvasRatio) {
+        drawH = VIEW_HEIGHT;
+        drawW = VIEW_HEIGHT * imgRatio;
+      } else {
+        drawW = VIEW_WIDTH;
+        drawH = VIEW_WIDTH / imgRatio;
+      }
+      // Scale up slightly to crop more off sides, reducing stretched feel
+      const extraScale = 1.07;
+      drawW *= extraScale;
+      drawH *= extraScale;
+      const drawX = (VIEW_WIDTH - drawW) / 2;
+      const drawY = (VIEW_HEIGHT - drawH) / 2;
+      context.drawImage(img, drawX, drawY, drawW, drawH);
     }
     return;
   }
 
+  if (themeId === "boss-room") {
+    if (themes.bossRoom?.bg?.loaded) {
+      context.drawImage(themes.bossRoom.bg.image, 0, 0, VIEW_WIDTH, VIEW_HEIGHT);
+    }
+    return;
+  }
+
+  // Procedural backdrop for zones without art assets (post-boss ascending zones)
+  const zone = getForestZone();
+  const pal = zone?.palette || FOREST_ZONE_DEFAULT_PALETTE;
+  const skyColors = pal.sky || ["#080810", "#101020", "#080810"];
+
+  // Gradient sky
+  const skyGrad = context.createLinearGradient(0, 0, 0, VIEW_HEIGHT);
+  skyGrad.addColorStop(0, skyColors[0]);
+  skyGrad.addColorStop(0.5, skyColors[1]);
+  skyGrad.addColorStop(1, skyColors[2]);
+  context.fillStyle = skyGrad;
+  context.fillRect(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
+
+  // Far ridge silhouette
+  context.fillStyle = pal.ridgeFar;
+  context.beginPath();
+  context.moveTo(0, VIEW_HEIGHT * 0.55);
+  for (let x = 0; x <= VIEW_WIDTH; x += 40) {
+    const h = Math.sin(x * 0.008 + 1.2) * 30 + Math.sin(x * 0.015) * 18;
+    context.lineTo(x, VIEW_HEIGHT * 0.55 + h);
+  }
+  context.lineTo(VIEW_WIDTH, VIEW_HEIGHT);
+  context.lineTo(0, VIEW_HEIGHT);
+  context.closePath();
+  context.fill();
+
+  // Near ridge silhouette
+  context.fillStyle = pal.ridgeNear;
+  context.beginPath();
+  context.moveTo(0, VIEW_HEIGHT * 0.65);
+  for (let x = 0; x <= VIEW_WIDTH; x += 30) {
+    const h = Math.sin(x * 0.012 + 2.5) * 22 + Math.sin(x * 0.02 + 0.8) * 14;
+    context.lineTo(x, VIEW_HEIGHT * 0.65 + h);
+  }
+  context.lineTo(VIEW_WIDTH, VIEW_HEIGHT);
+  context.lineTo(0, VIEW_HEIGHT);
+  context.closePath();
+  context.fill();
+
+  // Haze overlay
+  if (pal.haze) {
+    context.fillStyle = pal.haze;
+    context.fillRect(0, 0, VIEW_WIDTH, VIEW_HEIGHT);
+  }
 }
 
 
@@ -3287,6 +4892,12 @@ function drawPlatforms() {
           stepPatternAlpha
         );
       }
+      // Top edge highlight
+      context.fillStyle = forestPalette.stepTop;
+      context.fillRect(platform.x, platform.y, platform.width, 3);
+      // Bottom shadow
+      context.fillStyle = "rgba(0,0,0,0.25)";
+      context.fillRect(platform.x, platform.y + platform.height - 2, platform.width, 2);
       continue;
     }
 
@@ -3460,6 +5071,344 @@ function drawSpecialProjectiles() {
     drawSpecialProjectileCrescent(Math.min(1, life * 1.08), 1.18, 0);
     context.restore();
   }
+}
+
+// ── Lightning Stab System ──
+const lightningBolts = [];
+
+function drawLightningSegment(x1, y1, x2, y2, width, alpha, color, segments) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len = Math.sqrt(dx * dx + dy * dy);
+  if (len === 0) return;
+  const nx = -dy / len;
+  const ny = dx / len;
+
+  context.save();
+  context.globalAlpha = alpha;
+  context.strokeStyle = color;
+  context.lineWidth = width;
+  context.lineCap = "round";
+  context.lineJoin = "round";
+  context.shadowBlur = width * 4;
+  context.shadowColor = color;
+
+  context.beginPath();
+  context.moveTo(x1, y1);
+  for (let i = 1; i < segments; i++) {
+    const t = i / segments;
+    const px = x1 + dx * t;
+    const py = y1 + dy * t;
+    const jitter = (Math.random() - 0.5) * width * 6;
+    context.lineTo(px + nx * jitter, py + ny * jitter);
+  }
+  context.lineTo(x2, y2);
+  context.stroke();
+  context.restore();
+}
+
+function getSwordTipX() {
+  // Attack_3 stab: sword tip moves forward as animation progresses
+  // Frame 0: wind up (tip near body), Frame 1: mid stab, Frame 2: full extension
+  const stabProgress = clamp(1 - player.lightningStabTime / LIGHTNING_STAB_DURATION, 0, 1);
+  const tipOffset = 20 + stabProgress * 42; // 20px at start, 62px fully extended
+  return getPlayerCenterX() + player.facing * tipOffset;
+}
+
+function getSwordTipY() {
+  return player.y + player.height * 0.42;
+}
+
+function spawnLightningBolt() {
+  lightningBolts.push({
+    scene: currentScene,
+    age: 0,
+    releasing: false,
+    fadeTime: 0,
+    damageTick: 0
+  });
+}
+
+function updateLightningBolts(deltaTime) {
+  for (let i = lightningBolts.length - 1; i >= 0; i--) {
+    const bolt = lightningBolts[i];
+
+    if (bolt.scene !== currentScene) {
+      lightningBolts.splice(i, 1);
+      continue;
+    }
+
+    bolt.age += deltaTime;
+
+    // If releasing, count fade time
+    if (bolt.releasing) {
+      bolt.fadeTime += deltaTime;
+      if (bolt.fadeTime >= LIGHTNING_STAB_BOLT_FADE) {
+        lightningBolts.splice(i, 1);
+        continue;
+      }
+    }
+
+    // Beam extends from sword tip outward
+    const tipX = getSwordTipX();
+    const extend = clamp(bolt.age * 6, 0, 1);
+    const beamLen = LIGHTNING_STAB_RANGE * extend;
+    const beamEndX = tipX + player.facing * beamLen;
+    const beamMinX = Math.min(tipX, beamEndX);
+    const beamMaxX = Math.max(tipX, beamEndX);
+
+    // Continuous damage ticks while channeling
+    bolt.damageTick -= deltaTime;
+    if (bolt.damageTick <= 0 && !bolt.releasing) {
+      bolt.damageTick = LIGHTNING_STAB_DAMAGE_TICK;
+
+      let hit = false;
+      if (
+        isBossEncounterActive() && !boss.dead &&
+        getBossCenterX() >= beamMinX && getBossCenterX() <= beamMaxX
+      ) {
+        damageBoss(LIGHTNING_STAB_DAMAGE);
+        hit = true;
+      }
+
+      if (
+        !hit &&
+        isNightborneZone() && nightborne.active && !nightborne.dead &&
+        nightborne.x >= beamMinX && nightborne.x <= beamMaxX
+      ) {
+        damageNightborne(LIGHTNING_STAB_DAMAGE);
+        hit = true;
+      }
+
+      if (!hit) {
+        checkMobProjectileHit(tipX + player.facing * beamLen * 0.5, LIGHTNING_STAB_DAMAGE);
+      }
+    }
+  }
+}
+
+function drawLightningBeamBranch(x1, y1, x2, y2, width, alpha, color, segments, depth, maxDepth, dir) {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len = Math.sqrt(dx * dx + dy * dy);
+  if (len < 3) return;
+  const nx = -dy / len;
+  const ny = dx / len;
+
+  // Build jagged path — more chaotic at higher depth
+  const jitterScale = width * (5 + depth * 3);
+  const points = [[x1, y1]];
+  for (let i = 1; i < segments; i++) {
+    const t = i / segments;
+    const jitter = (Math.random() - 0.5) * jitterScale;
+    points.push([x1 + dx * t + nx * jitter, y1 + dy * t + ny * jitter]);
+  }
+  points.push([x2, y2]);
+
+  context.save();
+  context.globalAlpha = alpha;
+  context.strokeStyle = color;
+  context.lineWidth = width;
+  context.lineCap = "round";
+  context.lineJoin = "round";
+  context.shadowBlur = width * 6;
+  context.shadowColor = color;
+
+  context.beginPath();
+  context.moveTo(points[0][0], points[0][1]);
+  for (let i = 1; i < points.length; i++) {
+    context.lineTo(points[i][0], points[i][1]);
+  }
+  context.stroke();
+  context.restore();
+
+  // Recursive branching
+  if (depth < maxDepth) {
+    const branchChance = depth === 0 ? 0.35 : 0.25;
+    for (let i = 2; i < points.length - 1; i += 2) {
+      if (Math.random() < branchChance) {
+        const branchLen = len * (0.3 + Math.random() * 0.25) / (depth + 1);
+        const angle = (Math.random() - 0.5) * Math.PI * 1.1;
+        const bx2 = points[i][0] + Math.cos(angle) * branchLen * dir;
+        const by2 = points[i][1] + Math.sin(angle) * branchLen;
+        drawLightningBeamBranch(
+          points[i][0], points[i][1], bx2, by2,
+          width * 0.5, alpha * 0.6,
+          depth === 0 ? "rgba(140, 190, 255, 0.9)" : "rgba(100, 150, 255, 0.7)",
+          Math.max(3, segments - 2), depth + 1, maxDepth, dir
+        );
+      }
+    }
+  }
+}
+
+function drawLightningBoltJagged(originX, originY, endX, endY, width, alpha, segments) {
+  const dx = endX - originX;
+  const dy = endY - originY;
+  const len = Math.sqrt(dx * dx + dy * dy);
+  if (len < 2) return;
+  const nx = -dy / len;
+  const ny = dx / len;
+
+  context.globalAlpha = alpha;
+  context.lineWidth = width;
+  context.beginPath();
+  context.moveTo(originX, originY);
+  for (let i = 1; i < segments; i++) {
+    const t = i / segments;
+    const jitter = (Math.random() - 0.5) * width * 5;
+    context.lineTo(originX + dx * t + nx * jitter, originY + dy * t + ny * jitter);
+  }
+  context.lineTo(endX, endY);
+  context.stroke();
+}
+
+function drawLightningBolts() {
+  if (lightningBolts.length === 0) return;
+
+  context.save();
+
+  for (const bolt of lightningBolts) {
+    if (bolt.scene !== currentScene) continue;
+
+    const life = bolt.releasing ? clamp(1 - bolt.fadeTime / LIGHTNING_STAB_BOLT_FADE, 0, 1) : 1;
+    if (life <= 0) continue;
+
+    const dir = player.facing;
+    const originX = getSwordTipX();
+    const originY = getSwordTipY() - cameraY;
+    const t = animationClock;
+
+    const extend = clamp(bolt.age * 6, 0, 1);
+    const beamLen = Math.max(4, LIGHTNING_STAB_RANGE * extend);
+    const endX = originX + dir * beamLen;
+    const midX = originX + dir * beamLen * 0.5;
+    const pulse = 0.85 + Math.sin(t * 35) * 0.15;
+    const intensity = life * pulse;
+
+    context.globalCompositeOperation = "lighter";
+    context.lineCap = "round";
+    context.lineJoin = "round";
+
+    // --- Ambient glow ---
+    context.globalAlpha = intensity * 0.2;
+    context.fillStyle = "rgba(80, 120, 255, 0.15)";
+    context.fillRect(Math.min(originX, endX) - 20, originY - 40, Math.abs(endX - originX) + 40, 80);
+
+    // --- Beam core glow ellipse ---
+    context.globalAlpha = intensity * 0.4;
+    context.fillStyle = "rgba(120, 160, 255, 0.3)";
+    context.beginPath();
+    context.ellipse(midX, originY, Math.max(2, beamLen * 0.5), Math.max(2, 16 * intensity), 0, 0, Math.PI * 2);
+    context.fill();
+
+    // --- Main lightning bolts (5 jagged lines) ---
+    context.shadowColor = "rgba(100, 160, 255, 0.8)";
+    context.shadowBlur = 8;
+
+    // Outer glow bolts
+    context.strokeStyle = "rgba(80, 130, 255, 0.7)";
+    drawLightningBoltJagged(originX, originY - 6, endX, originY - 2, 4 * intensity, intensity * 0.4, 8);
+    drawLightningBoltJagged(originX, originY + 7, endX, originY + 3, 3.5 * intensity, intensity * 0.35, 7);
+
+    // Main bright bolts
+    context.strokeStyle = "rgba(160, 200, 255, 0.9)";
+    drawLightningBoltJagged(originX, originY - 3, endX, originY + 1, 3 * intensity, intensity * 0.7, 10);
+    drawLightningBoltJagged(originX, originY + 3, endX, originY - 1, 2.5 * intensity, intensity * 0.6, 9);
+
+    // White-hot core
+    context.strokeStyle = "rgba(230, 240, 255, 1)";
+    context.shadowColor = "rgba(180, 220, 255, 1)";
+    context.shadowBlur = 10;
+    drawLightningBoltJagged(originX, originY, endX, originY, 2 * intensity, intensity * 0.9, 12);
+
+    context.shadowBlur = 0;
+    context.shadowColor = "transparent";
+
+    // --- Branches from main beam ---
+    context.strokeStyle = "rgba(130, 180, 255, 0.7)";
+    for (let b = 0; b < 4; b++) {
+      const bPhase = Math.sin(t * 30 + b * 7);
+      if (bPhase < 0.1) continue;
+      const bPos = 0.2 + b * 0.2;
+      const bx = originX + dir * beamLen * bPos;
+      const by = originY + Math.sin(t * 20 + b * 5) * 3;
+      const bDir = (b % 2 === 0) ? -1 : 1;
+      const bLen = 15 + Math.sin(t * 25 + b * 3) * 8;
+      context.globalAlpha = intensity * bPhase * 0.5;
+      context.lineWidth = 1.2 * intensity;
+      context.beginPath();
+      context.moveTo(bx, by);
+      context.lineTo(bx + dir * 8, by + bDir * bLen);
+      context.lineTo(bx + dir * 14, by + bDir * (bLen * 0.5));
+      context.stroke();
+    }
+
+    // --- Sword tip flash ---
+    context.globalAlpha = intensity * 0.7;
+    context.fillStyle = "rgba(220, 240, 255, 0.8)";
+    context.beginPath();
+    context.arc(originX, originY, Math.max(2, 20 * intensity), 0, Math.PI * 2);
+    context.fill();
+
+    // --- Impact flash ---
+    if (extend > 0.7) {
+      context.globalAlpha = intensity * 0.5;
+      context.fillStyle = "rgba(180, 210, 255, 0.6)";
+      context.beginPath();
+      context.arc(endX, originY, Math.max(2, 22 * intensity), 0, Math.PI * 2);
+      context.fill();
+    }
+
+    // --- Sparks ---
+    context.fillStyle = "rgba(220, 240, 255, 0.9)";
+    for (let p = 0; p < 6; p++) {
+      const sparkT = (t * 8 + p * 0.73) % 1;
+      const px = originX + dir * beamLen * sparkT;
+      const py = originY + Math.sin(t * 40 + p * 5.7) * 12;
+      const sz = 1.5 + Math.sin(t * 55 + p * 3) * 1;
+      if (sz <= 0) continue;
+      context.globalAlpha = intensity * (0.4 + Math.sin(t * 50 + p * 7) * 0.3);
+      context.beginPath();
+      context.arc(px, py, sz, 0, Math.PI * 2);
+      context.fill();
+    }
+
+    // --- Ground glow ---
+    const groundY = player.y + player.height - cameraY + 2;
+    context.globalAlpha = intensity * 0.12;
+    context.fillStyle = "rgba(80, 120, 255, 0.3)";
+    context.fillRect(Math.min(originX, endX), groundY - 2, Math.abs(endX - originX), 6);
+  }
+
+  context.restore();
+}
+
+function isLightningStabActive() {
+  // Safety: if no timer, not channeling, and no bolts, definitely not active
+  if (player.lightningStabTime <= 0 && !player.lightningChanneling && lightningBolts.length === 0) return false;
+  if (player.dead) return false;
+  // Hard safety: if bolts have been alive too long (5s), force cleanup
+  if (lightningBolts.length > 0 && lightningBolts[0].age > 5) {
+    lightningBolts.length = 0;
+    player.lightningChanneling = false;
+    return false;
+  }
+  return true;
+}
+
+function triggerLightningStab() {
+  if (!canPlayerFight() || player.hurtTime > 0 || !player.grounded) return;
+  if (player.lightningStabCooldown > 0 || isLightningStabActive() || isPlayerSpecialAttacking() || isPlayerDashing()) return;
+
+  player.lightningStabTime = LIGHTNING_STAB_DURATION;
+  player.lightningBoltSpawned = false;
+  player.lightningDamageTick = 0;
+  player.lightningChanneling = true;
+  player.attackTime = 0;
+  player.attackHitDone = true;
+  player.blocking = false;
+  player.vx = 0;
 }
 
 function drawSamuraiGroundSpears(progress) {
@@ -3829,54 +5778,186 @@ function drawPlayer() {
 
   if (activeSprite && activeSprite.loaded) {
     if (spriteState === "dash") {
-      const frameCount = getFrameCount(activeSprite);
-      const dashFrame = getPlayerFrameIndex(spriteState, frameCount);
       const baseAlpha = context.globalAlpha;
       const dashProgress = clamp(1 - player.dashTime / PLAYER_DASH_DURATION, 0, 1);
-      const trailStrength = 1 - dashProgress * 0.35;
+      const trailStrength = 1 - dashProgress * 0.3;
+      const t = animationClock;
+      const cx = 0;
+      const cy = player.height * 0.42;
 
       context.save();
-      context.globalCompositeOperation = "screen";
-      context.globalAlpha = baseAlpha * (0.1 + trailStrength * 0.08);
-      const mistGradient = context.createLinearGradient(-200, 0, 24, 0);
-      mistGradient.addColorStop(0, "rgba(230, 240, 250, 0)");
-      mistGradient.addColorStop(0.38, "rgba(212, 226, 242, 0.2)");
-      mistGradient.addColorStop(0.75, "rgba(146, 186, 228, 0.12)");
-      mistGradient.addColorStop(1, "rgba(238, 248, 255, 0)");
-      context.fillStyle = mistGradient;
-      context.fillRect(-200, -4, 224, 34);
 
+      // --- Electric aura glow around character silhouette ---
+      context.globalCompositeOperation = "lighter";
+      const auraFlicker = 0.7 + Math.sin(t * 35) * 0.3;
+      context.globalAlpha = baseAlpha * 0.25 * auraFlicker * trailStrength;
+      const auraGrad = context.createRadialGradient(cx, cy, 2, cx, cy, 48);
+      auraGrad.addColorStop(0, "rgba(160, 200, 255, 1)");
+      auraGrad.addColorStop(0.3, "rgba(100, 160, 255, 0.6)");
+      auraGrad.addColorStop(0.6, "rgba(60, 120, 255, 0.2)");
+      auraGrad.addColorStop(1, "rgba(40, 80, 220, 0)");
+      context.fillStyle = auraGrad;
+      context.fillRect(-50, cy - 50, 100, 100);
+
+      // --- Wind mist trail ---
+      context.globalCompositeOperation = "screen";
+      context.globalAlpha = baseAlpha * (0.18 + trailStrength * 0.12);
+      const mistGradient = context.createLinearGradient(-280, 0, 30, 0);
+      mistGradient.addColorStop(0, "rgba(200, 220, 255, 0)");
+      mistGradient.addColorStop(0.25, "rgba(170, 200, 250, 0.3)");
+      mistGradient.addColorStop(0.6, "rgba(130, 175, 245, 0.18)");
+      mistGradient.addColorStop(1, "rgba(200, 230, 255, 0)");
+      context.fillStyle = mistGradient;
+      context.fillRect(-280, -14, 310, 58);
+
+      // --- Wind streaks ---
       context.lineCap = "round";
-      for (let i = 0; i < 6; i += 1) {
-        const y = -9 + i * 4.8 + Math.sin(animationClock * 9 + i * 0.8) * 1;
-        const startX = -210 - i * 5;
-        const endX = 18 - i * 2;
-        const ctrlX = startX + 78 + i * 4;
-        const ctrlY = y + Math.sin(animationClock * 8.5 + i) * (0.8 + i * 0.03);
-        const lineAlpha = (0.09 + (6 - i) * 0.02) * trailStrength;
+      for (let i = 0; i < 10; i += 1) {
+        const y = -16 + i * 5.5 + Math.sin(t * 12 + i * 1.3) * 2.5;
+        const startX = -300 - i * 10;
+        const endX = 28 - i * 2;
+        const ctrlX = startX + 100 + i * 6;
+        const ctrlY = y + Math.sin(t * 10 + i) * (1.5 + i * 0.06);
+        const lineAlpha = (0.15 + (10 - i) * 0.02) * trailStrength;
         const lineGradient = context.createLinearGradient(startX, y, endX, y);
-        lineGradient.addColorStop(0, "rgba(234, 244, 255, 0)");
-        lineGradient.addColorStop(0.28, `rgba(224, 236, 249, ${lineAlpha})`);
-        lineGradient.addColorStop(0.64, `rgba(178, 205, 235, ${lineAlpha * 0.58})`);
-        lineGradient.addColorStop(1, "rgba(232, 246, 255, 0)");
+        lineGradient.addColorStop(0, "rgba(200, 225, 255, 0)");
+        lineGradient.addColorStop(0.2, `rgba(180, 210, 250, ${lineAlpha})`);
+        lineGradient.addColorStop(0.55, `rgba(140, 185, 240, ${lineAlpha * 0.65})`);
+        lineGradient.addColorStop(1, "rgba(210, 235, 255, 0)");
         context.strokeStyle = lineGradient;
-        context.lineWidth = 0.8 + (6 - i) * 0.14;
+        context.lineWidth = 1.0 + (10 - i) * 0.12;
         context.beginPath();
         context.moveTo(startX, y);
-        context.quadraticCurveTo(ctrlX, ctrlY, endX, y + Math.sin(animationClock * 11 + i) * 0.45);
+        context.quadraticCurveTo(ctrlX, ctrlY, endX, y + Math.sin(t * 14 + i) * 0.8);
         context.stroke();
       }
-      context.restore();
 
-      for (let i = 5; i >= 1; i -= 1) {
-        const trailAlpha = baseAlpha * (0.02 + (6 - i) * 0.022) * trailStrength;
-        const trailScale = 1 + i * 0.025;
-        context.globalAlpha = trailAlpha;
-        drawPlayerSprite(activeSprite, spriteState, dashFrame, -i * 14, trailScale, -i * 0.2);
+      // --- Main lightning bolts (6 big, bright, jagged) ---
+      context.globalCompositeOperation = "lighter";
+      context.lineCap = "round";
+      context.lineJoin = "round";
+      const boltSeed = Math.floor(t * 22);
+      for (let b = 0; b < 6; b++) {
+        const seed = boltSeed * 3 + b * 53;
+        const flickerPhase = Math.sin(t * 40 + b * 3.9);
+        if (flickerPhase < -0.25) continue;
+        const intensity = (0.65 + flickerPhase * 0.35) * trailStrength;
+        const yBase = -14 + b * 7.5 + Math.sin(seed * 0.17) * 8;
+        const boltStartX = -260 - (seed % 60);
+        const boltEndX = 30 + (seed % 20);
+        const segments = 10 + (seed % 6);
+        const segLen = (boltEndX - boltStartX) / segments;
+
+        // Store points for reuse
+        const pts = [{x: boltStartX, y: yBase}];
+        for (let s = 1; s <= segments; s++) {
+          pts.push({
+            x: boltStartX + s * segLen,
+            y: yBase + Math.sin(seed * 0.8 + s * 2.7) * 6 + Math.cos(seed * 0.3 + s * 4.1) * 3
+          });
+        }
+
+        // Outer glow
+        context.globalAlpha = baseAlpha * intensity * 0.4;
+        context.strokeStyle = `rgba(80, 140, 255, 1)`;
+        context.lineWidth = 5;
+        context.shadowColor = "rgba(80, 150, 255, 1)";
+        context.shadowBlur = 14;
+        context.beginPath();
+        context.moveTo(pts[0].x, pts[0].y);
+        for (let s = 1; s < pts.length; s++) context.lineTo(pts[s].x, pts[s].y);
+        context.stroke();
+
+        // Main bolt
+        context.globalAlpha = baseAlpha * intensity * 0.85;
+        context.strokeStyle = `rgba(160, 200, 255, 1)`;
+        context.lineWidth = 2.5;
+        context.shadowColor = "rgba(120, 180, 255, 0.9)";
+        context.shadowBlur = 8;
+        context.beginPath();
+        context.moveTo(pts[0].x, pts[0].y);
+        for (let s = 1; s < pts.length; s++) context.lineTo(pts[s].x, pts[s].y);
+        context.stroke();
+
+        // White-hot core
+        context.globalAlpha = baseAlpha * intensity * 0.9;
+        context.strokeStyle = `rgba(230, 240, 255, 1)`;
+        context.lineWidth = 1.0;
+        context.shadowColor = "rgba(200, 230, 255, 0.6)";
+        context.shadowBlur = 4;
+        context.beginPath();
+        context.moveTo(pts[0].x, pts[0].y);
+        for (let s = 1; s < pts.length; s++) context.lineTo(pts[s].x, pts[s].y);
+        context.stroke();
+
+        // Branches from random midpoints
+        for (let br = 0; br < 2; br++) {
+          const brIdx = Math.floor(segments * (0.3 + br * 0.3));
+          if (brIdx >= pts.length) continue;
+          const brFlicker = Math.sin(t * 50 + b * 7 + br * 11);
+          if (brFlicker < 0.1) continue;
+          const bp = pts[brIdx];
+          const brDir = ((seed + br) % 2 === 0) ? -1 : 1;
+          const brLen = 18 + (seed % 14);
+          context.globalAlpha = baseAlpha * intensity * 0.55;
+          context.strokeStyle = `rgba(140, 190, 255, 1)`;
+          context.lineWidth = 1.4;
+          context.shadowBlur = 5;
+          context.beginPath();
+          context.moveTo(bp.x, bp.y);
+          const mx = bp.x + brLen * 0.5 + (seed % 6);
+          const my = bp.y + brDir * (brLen * 0.6);
+          const ex = bp.x + brLen + (seed % 8);
+          const ey = bp.y + brDir * (brLen * 0.35);
+          context.lineTo(mx, my);
+          context.lineTo(ex, ey);
+          context.stroke();
+
+          // Sub-branch
+          if (brFlicker > 0.5) {
+            context.globalAlpha = baseAlpha * intensity * 0.3;
+            context.lineWidth = 0.8;
+            context.beginPath();
+            context.moveTo(mx, my);
+            context.lineTo(mx + 10 + (seed % 5), my + brDir * (6 + (seed % 5)));
+            context.stroke();
+          }
+        }
+
+        context.shadowBlur = 0;
+        context.shadowColor = "transparent";
       }
 
+      // --- Electric sparks at player position ---
+      context.globalCompositeOperation = "lighter";
+      for (let sp = 0; sp < 5; sp++) {
+        const sparkPhase = Math.sin(t * 55 + sp * 8.3);
+        if (sparkPhase < 0.2) continue;
+        const sx = cx + Math.sin(t * 30 + sp * 5) * 18;
+        const sy = cy + Math.cos(t * 25 + sp * 7) * 22;
+        context.globalAlpha = baseAlpha * sparkPhase * 0.7 * trailStrength;
+        const sparkGrad = context.createRadialGradient(sx, sy, 0, sx, sy, 4 + sparkPhase * 3);
+        sparkGrad.addColorStop(0, "rgba(220, 240, 255, 1)");
+        sparkGrad.addColorStop(0.5, "rgba(100, 170, 255, 0.6)");
+        sparkGrad.addColorStop(1, "rgba(60, 120, 255, 0)");
+        context.fillStyle = sparkGrad;
+        context.fillRect(sx - 8, sy - 8, 16, 16);
+      }
+
+      // --- Bright core flash where the character is ---
+      context.globalCompositeOperation = "screen";
+      const flashPulse = 0.6 + Math.sin(t * 30) * 0.4;
+      context.globalAlpha = baseAlpha * 0.22 * flashPulse * trailStrength;
+      const flashGrad = context.createRadialGradient(cx, cy, 0, cx, cy, 38);
+      flashGrad.addColorStop(0, "rgba(200, 225, 255, 1)");
+      flashGrad.addColorStop(0.25, "rgba(140, 190, 255, 0.6)");
+      flashGrad.addColorStop(0.6, "rgba(80, 140, 255, 0.2)");
+      flashGrad.addColorStop(1, "rgba(60, 110, 255, 0)");
+      context.fillStyle = flashGrad;
+      context.fillRect(-40, cy - 40, 80, 80);
+
+      context.restore();
       context.globalAlpha = baseAlpha;
-      drawPlayerSprite(activeSprite, spriteState, dashFrame, 0);
     } else if (spriteState === "jumpAttack" && activeCharacter.id === "samurai") {
       const jumpAttackProgress = getJumpAttackProgress();
       drawSamuraiGroundSpears(jumpAttackProgress);
@@ -3890,9 +5971,24 @@ function drawPlayer() {
       context.globalAlpha = baseAlpha;
     } else if (spriteState === "special" && activeCharacter.id === "samurai") {
       const baseAlpha = context.globalAlpha;
+      // Draw character normally first
+      drawPlayerSprite(activeSprite, spriteState);
+      // Then add a bright glow overlay on top
       context.globalCompositeOperation = "screen";
-      context.filter = "brightness(1.38) saturate(1.55)";
-      context.globalAlpha = baseAlpha * 0.98;
+      context.filter = "brightness(1.6) saturate(1.8)";
+      context.globalAlpha = baseAlpha * 0.35;
+      drawPlayerSprite(activeSprite, spriteState);
+      context.filter = "none";
+      context.globalCompositeOperation = "source-over";
+      context.globalAlpha = baseAlpha;
+    } else if (spriteState === "lightningStab") {
+      const baseAlpha = context.globalAlpha;
+      // Draw character normally first
+      drawPlayerSprite(activeSprite, spriteState);
+      // Then add electric glow overlay
+      context.globalCompositeOperation = "screen";
+      context.filter = "brightness(1.6) saturate(2.0) hue-rotate(20deg)";
+      context.globalAlpha = baseAlpha * 0.3;
       drawPlayerSprite(activeSprite, spriteState);
       context.filter = "none";
       context.globalCompositeOperation = "source-over";
@@ -3922,7 +6018,8 @@ function drawPlayer() {
 
   context.restore();
 
-  drawHealthBar(drawX - 8, drawY - 22, 46, 5, player.health, player.maxHealth, "#c24646");
+  // Player health bar — fixed top-left HUD
+  drawHealthBar(16, 58, 120, 10, player.health, player.maxHealth, "#c24646");
 }
 
 function getPlayerFrameIndex(spriteState, frameCount) {
@@ -3938,6 +6035,9 @@ function getPlayerFrameIndex(spriteState, frameCount) {
   } else if (spriteState === "jumpAttack" && frameCount > 1) {
     const jumpAttackProgress = getJumpAttackProgress();
     frameIndex = Math.min(frameCount - 1, Math.floor(jumpAttackProgress * frameCount));
+  } else if (spriteState === "lightningStab" && frameCount > 1) {
+    const stabProgress = clamp(1 - player.lightningStabTime / LIGHTNING_STAB_DURATION, 0, 1);
+    frameIndex = Math.min(frameCount - 1, Math.floor(stabProgress * frameCount));
   } else if (spriteState === "attack" && frameCount > 1) {
     const attackProgress = 1 - player.attackTime / PLAYER_ATTACK_DURATION;
     frameIndex = Math.min(frameCount - 1, Math.floor(attackProgress * frameCount));
@@ -3963,6 +6063,7 @@ function drawPlayerSprite(asset, spriteState, frameOverride, xOffset = 0, scale 
   const frameCount = getFrameCount(asset);
   const { width: sourceWidth, height: sourceHeight } = getSpriteRenderableDimensions(spriteSource);
   const frameWidth = sourceWidth / frameCount;
+  const cropHeight = asset._frameHeight || sourceHeight;
   const frameIndex = typeof frameOverride === "number" ? frameOverride : getPlayerFrameIndex(spriteState, frameCount);
   const drawWidth = CHARACTER_DRAW_WIDTH * scale;
   const drawHeight = CHARACTER_DRAW_HEIGHT * scale;
@@ -3972,7 +6073,7 @@ function drawPlayerSprite(asset, spriteState, frameOverride, xOffset = 0, scale 
     frameIndex * frameWidth,
     0,
     frameWidth,
-    sourceHeight,
+    cropHeight,
     -drawWidth / 2 + xOffset,
     -42 + yOffset,
     drawWidth,
@@ -4082,9 +6183,13 @@ function render() {
   drawForestDecorations();
   drawTeleporters();
   drawBoss();
+  drawNightborne();
+  drawMobs();
   drawSpecialProjectiles();
+  drawLightningBolts();
   drawGoal();
   drawForestBonfire();
+  drawAmbientParticles();
   drawPlayer();
   drawOverlayText();
   drawVignette();
@@ -4200,15 +6305,27 @@ function tick(now) {
   const deltaTime = clamp((now - lastTime) / 1000, 0, 0.033);
   lastTime = now;
 
-  update(deltaTime);
-  render();
-  updateHud();
+  try {
+    pollGamepad();
+    update(deltaTime);
+    render();
+    updateHud();
+  } catch (e) {
+    console.error("Game loop error:", e);
+    // Emergency cleanup of lightning state to prevent permanent freeze
+    player.lightningStabTime = 0;
+    player.lightningChanneling = false;
+    player.lightningBoltSpawned = false;
+    player.lightningDamageTick = 0;
+    lightningBolts.length = 0;
+  }
 
   requestAnimationFrame(tick);
 }
 
 setupCharacterSelect();
 setupPauseMenu();
+setupFullscreenMenu();
 activateGameInput();
 resetPlayer();
 requestAnimationFrame((now) => {

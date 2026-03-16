@@ -32,6 +32,7 @@ Use the in-game character dropdown to switch between the sprite sets in:
 - `assets/characters/fighter`
 - `assets/characters/samurai`
 - `assets/characters/shinobi`
+- `assets/characters/destiny`
 
 The game uses each character's `Idle.png`, `Run.png`, and `Jump.png` strips and remembers your selection in the browser.
 

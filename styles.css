@@ -125,13 +125,23 @@ body {
 .stage-frame {
   position: relative;
   min-height: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
   background: linear-gradient(180deg, #1b0f10, #12090c);
+}
+
+.control-bar {
+  display: none;
 }
 
 #game {
   display: block;
   width: 100%;
   height: 100%;
+  max-width: calc((100vh - 70px) * 960 / 540);
+  aspect-ratio: 960 / 540;
+  object-fit: contain;
   background: linear-gradient(180deg, #120e15, #07070a);
   image-rendering: pixelated;
 }
@@ -200,6 +210,81 @@ body {
 .pause-actions button:focus-visible {
   outline: 2px solid rgba(224, 171, 79, 0.35);
   outline-offset: 2px;
+}
+
+/* Fullscreen button */
+#fullscreen-btn {
+  padding: 0.55rem 0.9rem;
+  border: 1px solid rgba(255, 231, 195, 0.14);
+  border-radius: 10px;
+  background: #24181b;
+  color: var(--text);
+  font: inherit;
+  cursor: pointer;
+}
+#fullscreen-btn:hover {
+  border-color: rgba(224, 171, 79, 0.62);
+}
+
+/* In fullscreen: hide topbar, make canvas fill screen */
+:fullscreen .topbar {
+  display: none;
+}
+:fullscreen .stage-frame {
+  width: 100vw;
+  height: 100vh;
+  background: #000;
+}
+:fullscreen #game {
+  max-width: calc(100vh * 960 / 540);
+  max-height: 100vh;
+}
+
+/* Fullscreen ESC menu overlay */
+.fs-menu {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(5, 6, 11, 0.75);
+  backdrop-filter: blur(6px);
+  z-index: 10;
+}
+.fs-menu[hidden] {
+  display: none;
+}
+.fs-menu-panel {
+  width: min(360px, 90%);
+  padding: 1.5rem;
+  border: 1px solid rgba(255, 232, 196, 0.2);
+  border-radius: 16px;
+  background: rgba(17, 11, 13, 0.94);
+  box-shadow: 0 24px 64px var(--shadow);
+  text-align: center;
+}
+.fs-menu-panel h2 {
+  margin: 0 0 1rem;
+  font-size: 1.8rem;
+  color: var(--text);
+}
+.fs-menu-actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.fs-menu-actions button {
+  padding: 0.7rem 1rem;
+  border: 1px solid rgba(255, 231, 195, 0.14);
+  border-radius: 10px;
+  background: #24181b;
+  color: var(--text);
+  font: inherit;
+  font-size: 1.1rem;
+  cursor: pointer;
+}
+.fs-menu-actions button:hover {
+  border-color: rgba(224, 171, 79, 0.62);
 }
 
 @media (max-width: 920px) {
